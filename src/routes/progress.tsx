@@ -105,7 +105,7 @@ function ProgressPage() {
         <div className="card-soft mt-6 flex items-center justify-center gap-4 p-5">
           <Avatar child={ch} />
           <div className="text-left">
-            <p className="font-bold">{domainOf(saved.domain).name}</p>
+            <p className="font-bold">{domainOf(saved.domain)?.name ?? saved.domain}</p>
             <p className="text-sm text-muted-foreground">
               Level {saved.prev} →{" "}
               <span className="font-bold text-primary">Level {saved.score}</span>

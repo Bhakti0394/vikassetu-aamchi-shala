@@ -113,7 +113,8 @@ describe("Recommendation Engine (src/lib/recommend.ts)", () => {
       const analysis = analyseChild(testChild, [baselineObs]);
       expect(analysis.latestScores.numbers).toBe(1);
       expect(analysis.confidence.numbers).toBe("early");
-      expect(analysis.weakestDomains[0].isEarly).toBe(true);
+      expect(analysis.weakestDomains[0]).toBeDefined();
+      expect(analysis.weakestDomains[0]?.isEarly).toBe(true);
     });
 
     it("identifies unobserved child as having no observations", () => {
@@ -159,11 +160,13 @@ describe("Recommendation Engine (src/lib/recommend.ts)", () => {
 
       expect(recs.length).toBe(2);
       // First recommendation must be the score 1 domain (numbers)
-      expect(recs[0].domain).toBe("numbers");
-      expect(recs[0].level).toBe(1);
+      expect(recs[0]).toBeDefined();
+      expect(recs[0]?.domain).toBe("numbers");
+      expect(recs[0]?.level).toBe(1);
       // Second recommendation must be score 2 (alphabet)
-      expect(recs[1].domain).toBe("alphabet");
-      expect(recs[1].level).toBe(2);
+      expect(recs[1]).toBeDefined();
+      expect(recs[1]?.domain).toBe("alphabet");
+      expect(recs[1]?.level).toBe(2);
       // Score 3 (colours) is excluded from remedial recommendations
       expect(recs.find((r) => r.domain === "colours")).toBeUndefined();
     });
@@ -195,7 +198,8 @@ describe("Recommendation Engine (src/lib/recommend.ts)", () => {
       const recs = recommendFor(testChild, observations, logs);
       expect(recs.length).toBeGreaterThan(0);
       // The primary activity should not be bead-counting if another activity exists in numbers
-      expect(recs[0].activity.id).not.toBe("bead-counting");
+      expect(recs[0]).toBeDefined();
+      expect(recs[0]?.activity.id).not.toBe("bead-counting");
     });
 
     it("adheres strictly to supportive, non-diagnostic language guidelines", () => {
@@ -212,7 +216,8 @@ describe("Recommendation Engine (src/lib/recommend.ts)", () => {
       ];
 
       const recs = recommendFor(testChild, observations);
-      const reason = recs[0].reason.toLowerCase();
+      expect(recs[0]).toBeDefined();
+      const reason = (recs[0]?.reason ?? "").toLowerCase();
 
       // Prohibited negative / diagnostic terms
       const forbiddenWords = ["slow", "failing", "weak", "delayed", "deficient", "poor", "behind"];

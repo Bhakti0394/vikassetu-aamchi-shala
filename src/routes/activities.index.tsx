@@ -61,12 +61,17 @@ function Activities() {
           const d = domainOf(a.domain);
           return (
             <div key={a.id} className="card-soft tilt shine flex flex-col overflow-hidden">
-              <div className={cn("flex h-28 items-center justify-center text-6xl", toneBg[d.tone])}>
+              <div
+                className={cn(
+                  "flex h-28 items-center justify-center text-6xl",
+                  d ? toneBg[d.tone] : "bg-muted",
+                )}
+              >
                 {a.emoji}
               </div>
               <div className="flex flex-1 flex-col p-5">
                 <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                  {d.name}
+                  {d?.name ?? a.domain}
                 </p>
                 <h3 className="mt-1 text-xl font-bold">{a.name}</h3>
                 <div className="mt-2 flex gap-3 text-sm text-muted-foreground">

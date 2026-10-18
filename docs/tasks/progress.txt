@@ -4,8 +4,8 @@
 # ==============================================================================
 
 CURRENT_STATUS: COMPLETED
-CURRENT_OBJECTIVE: Phase 1 fully implemented, verified, and audited.
-ACTIVE_TASK: None (Milestone complete)
+CURRENT_OBJECTIVE: Phase 2 fully implemented, verified, and audited.
+ACTIVE_TASK: None (Phase 2 complete)
 
 COMPLETED_TASKS:
 - [x] PRE-01: System inspection & GSD initialization
@@ -21,6 +21,10 @@ COMPLETED_TASKS:
 - [x] TASK-08: Implement Offline Resilience & Error Handling (src/routes/recommendations.tsx)
 - [x] TASK-09: Update Backend Contract Documentation (docs/BACKEND_CONTRACT.md)
 - [x] TASK-10: End-to-End Verification & Quality Pass
+- [x] TASK-11: Activity History & In-Memory Offline Sync Queue (src/lib/activityLogs.ts)
+- [x] TASK-12: Interactive Activity Guide Logging & Step Completion (src/routes/activities.$id.tsx)
+- [x] TASK-13: 360° Child Profile Activity Timeline & Recommendation Integration (src/routes/children.$id.tsx)
+- [x] TASK-14: Verification, Boundary Audit & Documentation Sync
 
 LOG_ENTRIES:
 --------------------------------------------------------------------------------
@@ -42,4 +46,16 @@ LOG_ENTRIES:
 - Documented changes in docs/BACKEND_CONTRACT.md with pending approval callout.
 - Verification pass: npm test (17 passed), pytest (8 passed), npm run build (successful bundle).
 - Boundary audit: Verified zero modifications to store.tsx, api.ts, untouched backend routers, or shared database tables.
+--------------------------------------------------------------------------------
+[2026-10-18 15:20 IST]
+- Executed Phase 2 end-to-end: Activity Hub Execution & Child Profile Integration.
+- TASK-11: Implemented in-memory offline sync queue in src/lib/activityLogs.ts with queuePendingTrial, getPendingTrials, syncPendingTrials, and fetchChildActivityHistory(childId). Guarded against concurrent duplicate syncs. Expanded vitest suite in src/lib/activityLogs.test.ts to 12 passing tests covering queueing, child filtering, backend flush, network offline fallback, and history merging.
+- TASK-12: Enhanced Activity Execution UI in src/routes/activities.$id.tsx with child selector (?child= query param with fallback), checkbox-driven step completion (enforcing completedSteps <= totalSteps), 3 outcome buttons ("Tried — Helped", "Tried — Needs Support", "Not Tried"), notes input, in-memory offline fallback on network failure with session badge, and previous trial history display.
+- TASK-13: Integrated Activity Trials Timeline and log-aware recommendations into 360° Child Profile in src/routes/children.$id.tsx. Passes activity logs into recommendFor(ch, obs, logs) for rotation. Renders outcome badges, step achievements, notes, and pending-sync badge with "Sync now" action.
+- TASK-14: Verification pass:
+  * Vitest: 34/34 tests passed across 3 test suites (recommend.test.ts, activityLogs.test.ts, app-routing.test.tsx).
+  * Pytest: 8/8 backend test cases passed in test_activity_logs.py.
+  * Build: npm run build completed client, SSR, and Nitro server bundles with zero errors.
+  * Boundary Audit: Verified store.tsx, api.ts, protected backend routers (observations.py, children.py, attendance.py, dashboard.py, services.py), and database schema remain 100% untouched.
+  * Approval Callout: ActivityLogCreate validator remains documented as pending Bhakti's approval.
 --------------------------------------------------------------------------------

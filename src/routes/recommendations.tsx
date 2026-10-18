@@ -213,7 +213,7 @@ function RecommendationsPage() {
                         {r.child.name}
                       </Link>
                       <p className="text-xs text-muted-foreground">
-                        {r.child.age} years old · {d.name}
+                        {r.child.age} years old · {d?.name ?? r.domain}
                       </p>
                     </div>
                   </div>
@@ -247,7 +247,7 @@ function RecommendationsPage() {
                   </div>
 
                   <p className="mt-1 font-display text-lg font-bold">
-                    {d.emoji} {d.name}
+                    {d ? `${d.emoji} ${d.name}` : r.domain}
                   </p>
 
                   {/* Reason Display */}
@@ -279,7 +279,10 @@ function RecommendationsPage() {
 
                 {/* Activity & Interactive Outcome Column */}
                 <div
-                  className={cn("flex flex-col justify-between p-5 lg:col-span-5", toneBg[d.tone])}
+                  className={cn(
+                    "flex flex-col justify-between p-5 lg:col-span-5",
+                    d ? toneBg[d.tone] : "bg-muted",
+                  )}
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2">
