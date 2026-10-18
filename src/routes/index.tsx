@@ -50,7 +50,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Dashboard() {
-  const { children, attendance, completed } = useStore();
+  const { children, observations, attendance, completed } = useStore();
   const present = children.filter((c) => isPresentToday(attendance, c.id)).length;
   const attention = children.filter(needsAttention);
   const focus = [...children].sort((a, b) => avgLevel(a) - avgLevel(b)).slice(0, 3);
@@ -146,7 +146,7 @@ function Dashboard() {
         </div>
         <div className="grid gap-4 md:grid-cols-3 stagger">
           {focus.map((ch) => {
-            const rec = recommendFor(ch)[0];
+            const rec = recommendFor(ch, observations)[0];
             if (!rec) return null;
             return (
               <div key={ch.id} className="card-soft tilt shine flex flex-col p-5">

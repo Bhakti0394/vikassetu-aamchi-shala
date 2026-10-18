@@ -2,7 +2,7 @@
 
 **Project:** VikasSetu — Aamchi Shala  
 **Module:** Observation & Recommendation Engine (Preschool Ages 3–4)  
-**Backend Stack:** Python 3.10+ · FastAPI · SQLite · SQLAlchemy 2.0 · Pydantic v2  
+**Backend Stack:** Python 3.10+ · FastAPI · SQLite · SQLAlchemy 2.0 · Pydantic v2
 
 ---
 
@@ -43,6 +43,7 @@ backend/
 ```
 
 ### `requirements.txt`
+
 ```text
 fastapi>=0.115.0,<1.0.0
 uvicorn[standard]>=0.30.0,<1.0.0
@@ -51,12 +52,14 @@ pydantic>=2.8.0,<3.0.0
 ```
 
 ### `requirements-dev.txt`
+
 ```text
 pytest>=8.2.0
 httpx>=0.27.0
 ```
 
 ### `.gitignore`
+
 ```text
 venv/
 .venv/
@@ -350,6 +353,16 @@ class ActivityLogCreate(CamelModel):
     outcome: LogOutcome = "not_tried"
     note: Optional[TrimmedNote] = None
 
+    # [PENDING APPROVAL: Bhakti] Additive validation: completed_steps <= total_steps
+    @model_validator(mode="after")
+    def validate_step_counts(self) -> "ActivityLogCreate":
+        if self.total_steps > 0 and self.completed_steps > self.total_steps:
+            raise ValueError("completed_steps cannot exceed total_steps")
+        return self
+
+> [!WARNING]
+> **PENDING APPROVAL (Bhakti):** The additive step count validator on `ActivityLogCreate` (`completed_steps <= total_steps` when `total_steps > 0`) is pending approval from backend lead (Bhakti). No database columns, foreign keys, or cascade behaviors were modified.
+
 class ActivityLogResponse(CamelModel):
     id: int
     child_id: str
@@ -380,7 +393,9 @@ class HealthResponse(CamelModel):
 ## 5. Domain Rules & Business Logic
 
 ### A. Child Creation (`POST /api/children`)
+
 Matches [`src/lib/store.tsx`](file:///c:/Users/bhakti/Downloads/Bloom_cep/smooth-mobile-experience-main/src/lib/store.tsx#L87-L113):
+
 1. **ID Generation:** Generates a URL-safe slug with a short random 4-character hex suffix:
    ```python
    import re, secrets
@@ -388,18 +403,20 @@ Matches [`src/lib/store.tsx`](file:///c:/Users/bhakti/Downloads/Bloom_cep/smooth
    child_id = f"{slug}-{secrets.token_hex(2)}"
    ```
 2. **Initial State:**
-   * `avatar`: Picked from avatars cyclically
-   * `tone`: `"teal"`
-   * `scores`: `{"alphabet": 1, "numbers": 1, "colours": 1, "art": 1, "stories": 1}`
-   * `strengths`: `[]`
-   * `needs`: `["First observations pending"]`
-   * `observed_domains`: `[]` (unobserved)
+   - `avatar`: Picked from avatars cyclically
+   - `tone`: `"teal"`
+   - `scores`: `{"alphabet": 1, "numbers": 1, "colours": 1, "art": 1, "stories": 1}`
+   - `strengths`: `[]`
+   - `needs`: `["First observations pending"]`
+   - `observed_domains`: `[]` (unobserved)
 
 ### B. Observation Validation & Score Derivation Engine (`backend/app/services.py`)
+
 Applies on `POST /api/observations`, `PUT /api/observations/{id}`, and `DELETE /api/observations/{id}`:
+
 1. **Observation ID & Date Generation:**
-   * ID is generated on the server using short UUID4 format: `f"obs-{uuid.uuid4().hex[:10]}"`.
-   * Date is recorded as a UTC ISO 8601 string ending with `Z`: `datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")`.
+   - ID is generated on the server using short UUID4 format: `f"obs-{uuid.uuid4().hex[:10]}"`.
+   - Date is recorded as a UTC ISO 8601 string ending with `Z`: `datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")`.
 2. **Existence Verification:** Return `404 Not Found` if `child_id` or `activity_id` does not exist.
 3. **Merged Validation on Update (`PUT`):**  
    Validate that `domain` and `activity` match against **merged values**:
@@ -460,6 +477,7 @@ Applies on `POST /api/observations`, `PUT /api/observations/{id}`, and `DELETE /
    After executing `POST`, `PUT`, or `DELETE` on `/api/observations`, the frontend store must re-fetch the updated child profile via `GET /api/children/{id}` to synchronize local state.
 
 ### C. Dashboard Summary Calculation (`GET /api/dashboard/summary`)
+
 1. **Timezone:** "Today" is calculated strictly in the `Asia/Kolkata` timezone:
    ```python
    from zoneinfo import ZoneInfo
@@ -480,26 +498,26 @@ Applies on `POST /api/observations`, `PUT /api/observations/{id}`, and `DELETE /
 Base URL: `/api`  
 Error Format: `{ "detail": "..." }` or `{ "detail": [{ "loc": [...], "msg": "..." }] }` (FastAPI 422 standard)
 
-| Method | Endpoint | Request Body | Status Code | Response | Description |
-|---|---|---|---|---|---|
-| `GET` | `/api/health` | None | `200` | `{"status": "healthy"}` | Health check |
-| `GET` | `/api/children` | None | `200` | `List[ChildResponse]` | List all children (with `observedDomains`) |
-| `POST` | `/api/children` | `ChildCreate` | `201` | `ChildResponse` | Create child with slug ID & pending status |
-| `GET` | `/api/children/{id}` | None | `200` / `404` | `ChildResponse` | Retrieve child profile |
-| `PUT` | `/api/children/{id}` | `ChildUpdate` | `200` / `404` | `ChildResponse` | Update child name/age |
-| `DELETE` | `/api/children/{id}` | None | `204` / `404` | Empty (No Content) | Cascade deletes child & related records |
-| `GET` | `/api/observations` | Query: `?child_id=&include_baseline=false` | `200` | `List[ObservationResponse]` | Get observations list (**excludes baseline by default**, ordered by date desc, id desc) |
-| `POST` | `/api/observations` | `ObservationCreate` | `201` / `404` / `422` | `ObservationResponse` | Add observation & update scores |
-| `PUT` | `/api/observations/{id}` | `ObservationUpdate`| `200` / `404` / `422` | `ObservationResponse` | Merged validation update & recalculate scores |
-| `DELETE` | `/api/observations/{id}`| None | `204` / `404` | Empty (No Content) | Delete observation & recalculate scores |
-| `GET` | `/api/attendance` | Query: `?month=` | `200` | `AttendanceMapResponse` | Full monthly attendance matrix |
-| `POST` | `/api/attendance` | `AttendanceRecord` | `200` / `201` | `AttendanceRecord` | Upsert single child attendance |
-| `POST` | `/api/attendance/bulk`| `BulkAttendanceCreate`| `200` | `Dict[str, int]` | Bulk upsert class attendance for date |
-| `GET` | `/api/activities` | Query: `?domain=` | `200` | `List[ActivityResponse]` | List activity library |
-| `GET` | `/api/activities/{id}` | None | `200` / `404` | `ActivityResponse` | Get single activity |
-| `GET` | `/api/activity-logs` | Query: `?child_id=` | `200` | `List[ActivityLogResponse]` | Filter activity logs by child |
-| `POST` | `/api/activity-logs` | `ActivityLogCreate`| `201` / `404` | `ActivityLogResponse` | Log guided activity completion |
-| `GET` | `/api/dashboard/summary` | None | `200` | `DashboardSummaryResponse`| Dashboard KPIs & observed score distributions |
+| Method   | Endpoint                 | Request Body                               | Status Code           | Response                    | Description                                                                             |
+| -------- | ------------------------ | ------------------------------------------ | --------------------- | --------------------------- | --------------------------------------------------------------------------------------- |
+| `GET`    | `/api/health`            | None                                       | `200`                 | `{"status": "healthy"}`     | Health check                                                                            |
+| `GET`    | `/api/children`          | None                                       | `200`                 | `List[ChildResponse]`       | List all children (with `observedDomains`)                                              |
+| `POST`   | `/api/children`          | `ChildCreate`                              | `201`                 | `ChildResponse`             | Create child with slug ID & pending status                                              |
+| `GET`    | `/api/children/{id}`     | None                                       | `200` / `404`         | `ChildResponse`             | Retrieve child profile                                                                  |
+| `PUT`    | `/api/children/{id}`     | `ChildUpdate`                              | `200` / `404`         | `ChildResponse`             | Update child name/age                                                                   |
+| `DELETE` | `/api/children/{id}`     | None                                       | `204` / `404`         | Empty (No Content)          | Cascade deletes child & related records                                                 |
+| `GET`    | `/api/observations`      | Query: `?child_id=&include_baseline=false` | `200`                 | `List[ObservationResponse]` | Get observations list (**excludes baseline by default**, ordered by date desc, id desc) |
+| `POST`   | `/api/observations`      | `ObservationCreate`                        | `201` / `404` / `422` | `ObservationResponse`       | Add observation & update scores                                                         |
+| `PUT`    | `/api/observations/{id}` | `ObservationUpdate`                        | `200` / `404` / `422` | `ObservationResponse`       | Merged validation update & recalculate scores                                           |
+| `DELETE` | `/api/observations/{id}` | None                                       | `204` / `404`         | Empty (No Content)          | Delete observation & recalculate scores                                                 |
+| `GET`    | `/api/attendance`        | Query: `?month=`                           | `200`                 | `AttendanceMapResponse`     | Full monthly attendance matrix                                                          |
+| `POST`   | `/api/attendance`        | `AttendanceRecord`                         | `200` / `201`         | `AttendanceRecord`          | Upsert single child attendance                                                          |
+| `POST`   | `/api/attendance/bulk`   | `BulkAttendanceCreate`                     | `200`                 | `Dict[str, int]`            | Bulk upsert class attendance for date                                                   |
+| `GET`    | `/api/activities`        | Query: `?domain=`                          | `200`                 | `List[ActivityResponse]`    | List activity library                                                                   |
+| `GET`    | `/api/activities/{id}`   | None                                       | `200` / `404`         | `ActivityResponse`          | Get single activity                                                                     |
+| `GET`    | `/api/activity-logs`     | Query: `?child_id=`                        | `200`                 | `List[ActivityLogResponse]` | Filter activity logs by child (ordered newest-first by `created_at desc, id desc`)      |
+| `POST`   | `/api/activity-logs`     | `ActivityLogCreate`                        | `201` / `404`         | `ActivityLogResponse`       | Log guided activity completion                                                          |
+| `GET`    | `/api/dashboard/summary` | None                                       | `200`                 | `DashboardSummaryResponse`  | Dashboard KPIs & observed score distributions                                           |
 
 ---
 
@@ -521,6 +539,7 @@ Error Format: `{ "detail": "..." }` or `{ "detail": [{ "loc": [...], "msg": "...
 ## 8. Frontend Integration Plan
 
 ### A. API Client (`src/lib/api.ts`)
+
 Handles `204 No Content`, FastAPI list-based 422 error parsing, and `VITE_API_URL` environment injection:
 
 ```ts
@@ -541,7 +560,9 @@ export async function apiRequest<T = void>(endpoint: string, options?: RequestIn
     let message = `HTTP Error ${res.status}`;
     if (errorData.detail) {
       if (Array.isArray(errorData.detail)) {
-        message = errorData.detail.map((e: { msg?: string }) => e.msg || JSON.stringify(e)).join(", ");
+        message = errorData.detail
+          .map((e: { msg?: string }) => e.msg || JSON.stringify(e))
+          .join(", ");
       } else if (typeof errorData.detail === "string") {
         message = errorData.detail;
       }
@@ -554,13 +575,15 @@ export async function apiRequest<T = void>(endpoint: string, options?: RequestIn
 ```
 
 ### B. Store Update (`src/lib/store.tsx`)
-* Replace `localStorage` loading with `Promise.all([api.getChildren(), api.getObservations(), api.getAttendance()])`.
-* `addObservation(o)` calls `await api.createObservation(o)` and immediately re-fetches the updated child (`await api.getChild(o.childId)`) to sync scores and observed domains.
-* `addChild(name, age)` calls `await api.createChild(name, age)` and appends to context.
-* `setPresent(childId, present)` calls `await api.setAttendance(childId, todayDate, present)`.
-* **Recommendations:** `recommendFor(child)` remains 100% computed on the client side in [`src/lib/data.ts`](file:///c:/Users/bhakti/Downloads/Bloom_cep/smooth-mobile-experience-main/src/lib/data.ts#L469). Zero UI changes needed.
+
+- Replace `localStorage` loading with `Promise.all([api.getChildren(), api.getObservations(), api.getAttendance()])`.
+- `addObservation(o)` calls `await api.createObservation(o)` and immediately re-fetches the updated child (`await api.getChild(o.childId)`) to sync scores and observed domains.
+- `addChild(name, age)` calls `await api.createChild(name, age)` and appends to context.
+- `setPresent(childId, present)` calls `await api.setAttendance(childId, todayDate, present)`.
+- **Recommendations:** `recommendFor(child)` remains 100% computed on the client side in [`src/lib/data.ts`](file:///c:/Users/bhakti/Downloads/Bloom_cep/smooth-mobile-experience-main/src/lib/data.ts#L469). Zero UI changes needed.
 
 ### C. CORS Configuration (`backend/app/main.py`)
+
 Includes standard Vite dev ports and local ports (3000, 5173, 8080):
 
 ```python
@@ -586,11 +609,11 @@ app.add_middleware(
 
 ## 9. Team Member Endpoint Assignment
 
-| Team Member | Module | Endpoints Assigned |
-|---|---|---|
-| **Member 2** | **Observations Engine** | • `POST /api/observations` (record observation & trigger score update)<br>• `PUT /api/observations/{id}` (merged validation edit & recalculate)<br>• `DELETE /api/observations/{id}` (delete & recalculate)<br>• `GET /api/observations` (history & filter by `?child_id=`, default excludes baseline) |
-| **Member 3** | **Recommendations & Guided Play** | • `GET /api/activities` & `GET /api/activities/{id}` (activities metadata)<br>• `POST /api/activity-logs` (record activity steps, outcome, note)<br>• `GET /api/activity-logs?child_id=` (audit logs per child)<br>• Consumes `Child.scores` to compute recommendations on the frontend |
-| **Member 4** | **Dashboard, Attendance & Profiles** | • `GET /api/dashboard/summary` (aggregated stats in `Asia/Kolkata`)<br>• `GET /api/attendance` & `POST /api/attendance` (daily roll)<br>• `POST /api/attendance/bulk` (quick-marking)<br>• `GET /api/children`, `POST /api/children`, `PUT /api/children/{id}`, `DELETE /api/children/{id}` |
+| Team Member  | Module                               | Endpoints Assigned                                                                                                                                                                                                                                                                                     |
+| ------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Member 2** | **Observations Engine**              | • `POST /api/observations` (record observation & trigger score update)<br>• `PUT /api/observations/{id}` (merged validation edit & recalculate)<br>• `DELETE /api/observations/{id}` (delete & recalculate)<br>• `GET /api/observations` (history & filter by `?child_id=`, default excludes baseline) |
+| **Member 3** | **Recommendations & Guided Play**    | • `GET /api/activities` & `GET /api/activities/{id}` (activities metadata)<br>• `POST /api/activity-logs` (record activity steps, outcome, note)<br>• `GET /api/activity-logs?child_id=` (audit logs per child)<br>• Consumes `Child.scores` to compute recommendations on the frontend                |
+| **Member 4** | **Dashboard, Attendance & Profiles** | • `GET /api/dashboard/summary` (aggregated stats in `Asia/Kolkata`)<br>• `GET /api/attendance` & `POST /api/attendance` (daily roll)<br>• `POST /api/attendance/bulk` (quick-marking)<br>• `GET /api/children`, `POST /api/children`, `PUT /api/children/{id}`, `DELETE /api/children/{id}`            |
 
 ---
 
@@ -622,12 +645,12 @@ app.add_middleware(
    cd backend
    ```
 2. **Create and Activate Virtual Environment:**
-   * **Windows (PowerShell):**
+   - **Windows (PowerShell):**
      ```powershell
      python -m venv venv
      .\venv\Scripts\Activate.ps1
      ```
-   * **Linux / macOS:**
+   - **Linux / macOS:**
      ```bash
      python3 -m venv venv
      source venv/bin/activate
@@ -647,4 +670,4 @@ app.add_middleware(
    uvicorn app.main:app --reload --port 8000
    ```
 6. **Open API Documentation:**
-   * Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
+   - Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)

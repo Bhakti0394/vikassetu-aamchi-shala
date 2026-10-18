@@ -1,5 +1,5 @@
 from typing import List, Dict, Literal, Optional, Annotated
-from pydantic import BaseModel, ConfigDict, StringConstraints, Field
+from pydantic import BaseModel, ConfigDict, StringConstraints, Field, model_validator
 from pydantic.alias_generators import to_camel
 
 DomainId = Literal["alphabet", "numbers", "colours", "art", "stories"]
@@ -95,6 +95,13 @@ class ActivityLogCreate(CamelModel):
     total_steps: int = Field(default=0, ge=0)
     outcome: LogOutcome = "not_tried"
     note: Optional[TrimmedNote] = None
+
+    # [PENDING APPROVAL: Bhakti] Additive validation: completed_steps <= total_steps
+    @model_validator(mode="after")
+    def validate_step_counts(self) -> "ActivityLogCreate":
+        if self.total_steps > 0 and self.completed_steps > self.total_steps:
+            raise ValueError("completed_steps cannot exceed total_steps")
+        return self
 
 class ActivityLogResponse(CamelModel):
     id: int

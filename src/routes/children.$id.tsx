@@ -37,8 +37,8 @@ function Profile() {
       </div>
     );
 
-  const recs = recommendFor(ch);
   const obs = observations.filter((o) => o.childId === ch.id);
+  const recs = recommendFor(ch, obs);
   const present = isPresentToday(attendance, ch.id);
 
   return (
