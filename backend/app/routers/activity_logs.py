@@ -31,6 +31,23 @@ def create_activity_log(payload: ActivityLogCreate, db: Session = Depends(get_db
             detail=f"Activity '{payload.activity_id}' not found"
         )
 
+    # Idempotency check: prevent duplicate activity logs on repeated online events or retries
+    existing = (
+        db.query(ActivityLog)
+        .filter(
+            ActivityLog.child_id == payload.child_id,
+            ActivityLog.activity_id == payload.activity_id,
+            ActivityLog.completed_steps == payload.completed_steps,
+            ActivityLog.total_steps == payload.total_steps,
+            ActivityLog.outcome == payload.outcome,
+            ActivityLog.note == payload.note,
+        )
+        .order_by(ActivityLog.created_at.desc(), ActivityLog.id.desc())
+        .first()
+    )
+    if existing:
+        return existing
+
     new_log = ActivityLog(
         child_id=payload.child_id,
         activity_id=payload.activity_id,

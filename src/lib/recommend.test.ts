@@ -389,5 +389,270 @@ describe("Recommendation Engine (src/lib/recommend.ts)", () => {
       expect(recs[0]?.isEarlySuggestion).toBe(true);
       expect(recs[0]?.evidence).toContain("Sang phonics song enthusiastically");
     });
+
+    it("differentiates future recommendations between tried_helped, tried_needs_support, and not_tried", () => {
+      const obs: Observation[] = [
+        {
+          id: "o-num",
+          childId: "aarav",
+          domain: "numbers",
+          activityId: "count-match",
+          score: 2,
+          note: "Counts up to 5",
+          date: "2026-10-18T10:00:00Z",
+        },
+      ];
+
+      // 1. With tried_helped on count-match: should rotate to alternative (bead-counting)
+      const helpedLogs: ActivityLogSummary[] = [
+        {
+          childId: "aarav",
+          activityId: "count-match",
+          outcome: "tried_helped",
+          createdAt: "2026-10-17T10:00:00Z",
+        },
+      ];
+      const recsAfterHelped = recommendFor(testChild, obs, helpedLogs);
+      expect(recsAfterHelped[0]?.activity.id).toBe("bead-counting");
+
+      // 2. With tried_needs_support on bead-counting: should prefer Easy count-match with scaffolding guidance
+      const supportLogs: ActivityLogSummary[] = [
+        {
+          childId: "aarav",
+          activityId: "bead-counting",
+          outcome: "tried_needs_support",
+          createdAt: "2026-10-17T10:00:00Z",
+        },
+      ];
+      const recsAfterSupport = recommendFor(testChild, obs, supportLogs);
+      expect(recsAfterSupport[0]?.activity.id).toBe("count-match");
+      expect(recsAfterSupport[0]?.activity.difficulty).toBe("Easy");
+
+      // 3. With not_tried: should not treat as failed, maintaining primary candidate
+      const notTriedLogs: ActivityLogSummary[] = [
+        {
+          childId: "aarav",
+          activityId: "count-match",
+          outcome: "not_tried",
+          createdAt: "2026-10-17T10:00:00Z",
+        },
+      ];
+      const recsAfterNotTried = recommendFor(testChild, obs, notTriedLogs);
+      expect(recsAfterNotTried[0]?.activity.id).toBe("count-match");
+    });
+
+    it("can recommend a previously tried activity again when all candidates have been tried", () => {
+      const obs: Observation[] = [
+        {
+          id: "o-art",
+          childId: "aarav",
+          domain: "art",
+          activityId: "leaf-painting",
+          score: 2,
+          note: "Enjoys art",
+          date: "2026-10-18T10:00:00Z",
+        },
+      ];
+
+      // Both art activities (leaf-painting and free-drawing) have been tried and helped
+      const logs: ActivityLogSummary[] = [
+        {
+          childId: "aarav",
+          activityId: "leaf-painting",
+          outcome: "tried_helped",
+          createdAt: "2026-10-15T10:00:00Z",
+        },
+        {
+          childId: "aarav",
+          activityId: "free-drawing",
+          outcome: "tried_helped",
+          createdAt: "2026-10-16T10:00:00Z",
+        },
+      ];
+
+      const recs = recommendFor(testChild, obs, logs);
+      expect(recs.length).toBe(1);
+      // Valid activity from catalog is still returned for continued practice
+      expect(["leaf-painting", "free-drawing"]).toContain(recs[0]?.activity.id);
+    });
+
+    it("updates the evidence rationale when a new observation note is recorded", () => {
+      const initialObs: Observation[] = [
+        {
+          id: "obs-init",
+          childId: "aarav",
+          domain: "alphabet",
+          activityId: "letter-sounds",
+          score: 1,
+          note: "Recognised A and B but needed help with C, D and E.",
+          date: "2026-10-15T10:00:00Z",
+        },
+      ];
+      const recs1 = recommendFor(testChild, initialObs);
+      expect(recs1[0]?.reason).toContain("Recognised A and B but needed help with C, D and E.");
+
+      // Newer observation records updated progress
+      const updatedObs: Observation[] = [
+        {
+          id: "obs-new",
+          childId: "aarav",
+          domain: "alphabet",
+          activityId: "letter-sounds",
+          score: 1,
+          note: "Recognised A, B and C independently today.",
+          date: "2026-10-18T10:00:00Z",
+        },
+        ...initialObs,
+      ];
+      const recs2 = recommendFor(testChild, updatedObs);
+      expect(recs2[0]?.reason).toContain("Recognised A, B and C independently today.");
+    });
+
+    it("ensures every recommended activity ID belongs strictly to the existing catalog", () => {
+      const allObservations: Observation[] = [
+        { id: "1", childId: "aarav", domain: "alphabet", activityId: "letter-sounds", score: 1, note: "Letters", date: "2026-10-18T10:00:00Z" },
+        { id: "2", childId: "aarav", domain: "numbers", activityId: "count-match", score: 1, note: "Numbers", date: "2026-10-18T10:00:00Z" },
+        { id: "3", childId: "aarav", domain: "colours", activityId: "colour-hunt", score: 1, note: "Colours", date: "2026-10-18T10:00:00Z" },
+        { id: "4", childId: "aarav", domain: "art", activityId: "leaf-painting", score: 1, note: "Art", date: "2026-10-18T10:00:00Z" },
+        { id: "5", childId: "aarav", domain: "stories", activityId: "story-circle", score: 1, note: "Stories", date: "2026-10-18T10:00:00Z" },
+      ];
+
+      const validIds = new Set(["alphabet-match", "letter-sounds", "name-tracing", "count-match", "bead-counting", "colour-hunt", "shape-sort", "leaf-painting", "free-drawing", "story-circle", "handwash-song"]);
+
+      const recs = recommendFor(testChild, allObservations);
+      for (const r of recs) {
+        expect(validIds.has(r.activity.id)).toBe(true);
+      }
+    });
+
+    it("recommends evidence-based activity when observation is missing an explicit assessment score", () => {
+      const obsNoScore: Observation = {
+        id: "obs-no-score",
+        childId: "new-student-42",
+        domain: "art",
+        activityId: "leaf-painting",
+        score: undefined as unknown as 1,
+        note: "Enjoyed mixing finger paints enthusiastically",
+        date: "2026-10-18T10:00:00Z",
+      };
+
+      const customChild: Child = {
+        id: "new-student-42",
+        name: "Pooja",
+        age: 4,
+        avatar: "👧🏽",
+        tone: "coral",
+        scores: { alphabet: 1, numbers: 1, colours: 2, art: 2, stories: 1 },
+        strengths: ["Loves colours"],
+        needs: ["Fine motor skills"],
+      };
+
+      const analysis = analyseChild(customChild, [obsNoScore]);
+      expect(analysis.hasNoObservations).toBe(false);
+      expect(analysis.latestScores.art).toBe(2); // Falls back to child profile baseline
+      expect(analysis.evidence.art).toContain("Enjoyed mixing finger paints enthusiastically");
+
+      const recs = recommendFor(customChild, [obsNoScore]);
+      expect(recs.length).toBe(1);
+      expect(recs[0]?.domain).toBe("art");
+      expect(recs[0]?.evidence).toContain("Enjoyed mixing finger paints enthusiastically");
+    });
+
+    it("recommends activity in observed domain when child only has 1 observed area with Level 3 (e.g. Yash)", () => {
+      const yashChild: Child = {
+        id: "yash",
+        name: "Yash",
+        age: 5,
+        avatar: "👦🏽",
+        tone: "teal",
+        scores: { alphabet: 3, numbers: 2, colours: 3, art: 2, stories: 2 },
+        strengths: ["Enthusiastic learner"],
+        needs: ["Patience"],
+      };
+
+      const yashObs: Observation[] = [
+        {
+          id: "obs-yash-1",
+          childId: "yash",
+          domain: "alphabet",
+          activityId: "letter-sounds",
+          score: 3,
+          note: "Mastered all letter phonics and blends",
+          date: "2026-10-18T10:00:00Z",
+        },
+      ];
+
+      const analysis = analyseChild(yashChild, yashObs);
+      // Not all 5 domains are observed, so allAssessedMastered MUST be false
+      expect(analysis.allAssessedMastered).toBe(false);
+      expect(analysis.unobservedDomains.length).toBe(4);
+
+      // recommendFor MUST NOT return empty []
+      const recs = recommendFor(yashChild, yashObs);
+      expect(recs.length).toBe(1);
+      expect(recs[0]?.domain).toBe("alphabet");
+      expect(recs[0]?.level).toBe(3);
+      expect(recs[0]?.reason).toContain("offers creative extension and leadership practice");
+      expect(recs[0]?.evidence).toContain("Mastered all letter phonics and blends");
+    });
+
+    it("marks allAssessedMastered TRUE only when all 5 domains are observed and verified at Level 3", () => {
+      const fullChild: Child = {
+        id: "saanvi",
+        name: "Saanvi",
+        age: 5,
+        avatar: "👧🏽",
+        tone: "sun",
+        scores: { alphabet: 3, numbers: 3, colours: 3, art: 3, stories: 3 },
+        strengths: ["All areas"],
+        needs: [],
+      };
+
+      const fiveObs: Observation[] = [
+        { id: "1", childId: "saanvi", domain: "alphabet", activityId: "letter-sounds", score: 3, note: "Mastered", date: "2026-10-18T10:00:00Z" },
+        { id: "2", childId: "saanvi", domain: "numbers", activityId: "count-match", score: 3, note: "Mastered", date: "2026-10-18T10:00:00Z" },
+        { id: "3", childId: "saanvi", domain: "colours", activityId: "colour-hunt", score: 3, note: "Mastered", date: "2026-10-18T10:00:00Z" },
+        { id: "4", childId: "saanvi", domain: "art", activityId: "leaf-painting", score: 3, note: "Mastered", date: "2026-10-18T10:00:00Z" },
+        { id: "5", childId: "saanvi", domain: "stories", activityId: "story-circle", score: 3, note: "Mastered", date: "2026-10-18T10:00:00Z" },
+      ];
+
+      const analysis = analyseChild(fullChild, fiveObs);
+      expect(analysis.allAssessedMastered).toBe(true);
+      expect(analysis.unobservedDomains.length).toBe(0);
+
+      // Even when all 5 domains are Level 3, recommendFor provides extension activities!
+      const recs = recommendFor(fullChild, fiveObs);
+      expect(recs.length).toBe(2);
+      expect(recs[0]?.level).toBe(3);
+    });
+
+    it("generates recommendations from activity trial history when child has 0 manual observations", () => {
+      const newChild: Child = {
+        id: "kabir-new",
+        name: "Kabir",
+        age: 4,
+        avatar: "👦🏽",
+        tone: "sky",
+        scores: { alphabet: 1, numbers: 1, colours: 1, art: 1, stories: 1 },
+        strengths: [],
+        needs: [],
+      };
+
+      const trialLogs: ActivityLogSummary[] = [
+        {
+          childId: "kabir-new",
+          activityId: "leaf-painting",
+          outcome: "tried_needs_support",
+          note: "Needed assistance with brush hold",
+          createdAt: "2026-10-18T10:00:00Z",
+        },
+      ];
+
+      const recs = recommendFor(newChild, [], trialLogs);
+      expect(recs.length).toBe(1);
+      expect(recs[0]?.domain).toBe("art");
+      // Prioritizes easier activity or adapts strategy based on support need
+      expect(recs[0]?.lastTrial?.outcome).toBe("tried_needs_support");
+    });
   });
 });

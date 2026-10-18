@@ -14,6 +14,7 @@ import {
 } from "@/lib/data";
 import { Avatar, DomainChip, PageHeader, ScoreBadge } from "@/components/ui-kit";
 import { cn } from "@/lib/utils";
+import { invalidateRecommendationCache } from "@/lib/aiRecommendations";
 
 type S = {
   child?: string | undefined;
@@ -83,6 +84,7 @@ function ProgressPage() {
     if (!ready) return;
     setSaved({ childId: child.id, prev: child.scores[domain], score, domain });
     addObservation({ childId: child.id, domain, activityId, score, note: note.trim() });
+    invalidateRecommendationCache(child.id);
   };
   const again = () => {
     setSaved(null);

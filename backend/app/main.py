@@ -8,6 +8,7 @@ from app.routers import (
     attendance,
     activity_logs,
     dashboard,
+    recommendations,
 )
 
 app = FastAPI(
@@ -50,6 +51,7 @@ def root():
             "attendance": "/api/attendance",
             "activity_logs": "/api/activity-logs",
             "dashboard": "/api/dashboard/summary",
+            "recommendations": "/api/recommendations/personalized",
         },
     }
 
@@ -72,3 +74,4 @@ app.include_router(observations.router)
 app.include_router(attendance.router)
 app.include_router(activity_logs.router)
 app.include_router(dashboard.router)
+app.include_router(recommendations.router)
