@@ -15,6 +15,7 @@ import { CalendarCheck, Home, Lightbulb, PenLine, Shapes, Users } from "lucide-r
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { StoreProvider } from "@/lib/store";
+import { initOfflineQueue, registerAutoSyncOnOnline } from "../lib/activityLogs";
 
 function NotFoundComponent() {
   return (
@@ -127,6 +128,20 @@ function RootComponent() {
   const isCurrent = (to: (typeof NAV)[number]["to"]) =>
     to === "/" ? pathname === "/" : pathname.startsWith(to);
 
+  useEffect(() => {
+    // Initialize persistent IndexedDB offline queue on application startup
+    initOfflineQueue().catch((err) => {
+      console.error("VikasSetu: Failed to initialize offline queue:", err);
+    });
+
+    // Register automatic background sync when browser network reconnects
+    const unsubscribe = registerAutoSyncOnOnline();
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <StoreProvider>
@@ -143,14 +158,14 @@ function RootComponent() {
             </div>
             <nav
               aria-label="Main navigation"
-              className="hidden gap-1 px-3 pb-3 md:flex lg:flex-col lg:pb-0"
+              className="hidden gap-1.5 px-3 pb-3 md:flex md:flex-wrap lg:flex-col lg:flex-nowrap lg:pb-0"
             >
               {NAV.map(({ to, label, icon: Icon }) => (
                 <Link
                   key={to}
                   to={to}
                   activeOptions={{ exact: to === "/" }}
-                  className="flex shrink-0 items-center gap-3 whitespace-nowrap rounded-xl px-4 py-3 font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  className="flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary lg:px-4 lg:py-3 lg:text-base"
                   activeProps={{ className: "bg-primary-soft text-primary" }}
                 >
                   <Icon aria-hidden="true" className="h-5 w-5" /> {label}
@@ -174,7 +189,7 @@ function RootComponent() {
                 to={to}
                 aria-label={label}
                 aria-current={isCurrent(to) ? "page" : undefined}
-                className={`flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-md px-0.5 text-[0.68rem] font-bold leading-none transition ${isCurrent(to) ? "text-primary" : "text-muted-foreground"}`}
+                className={`flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-md px-0.5 text-[0.68rem] font-bold leading-none transition focus-visible:ring-2 focus-visible:ring-primary ${isCurrent(to) ? "text-primary" : "text-muted-foreground"}`}
               >
                 <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
                 <span className="max-w-full truncate">{mobileLabel}</span>

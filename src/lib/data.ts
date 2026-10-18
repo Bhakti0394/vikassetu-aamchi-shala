@@ -361,6 +361,16 @@ export const SEED_CHILDREN: Child[] = [
     ["Curious and energetic"],
     ["Alphabet recognition", "Sitting for stories"],
   ),
+  c(
+    "yash-zs1c",
+    "Yash",
+    4,
+    "🧒🏽",
+    "teal",
+    [1, 1, 1, 1, 1],
+    [],
+    ["First observations pending"],
+  ),
 ];
 
 function daysAgo(n: number) {

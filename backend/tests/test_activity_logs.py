@@ -125,3 +125,26 @@ def test_get_activities_and_filter(client: TestClient):
     # Unknown activity returns 404
     res_unknown = client.get("/api/activities/non-existent-activity")
     assert res_unknown.status_code == 404
+
+def test_create_activity_log_idempotent_no_duplicate(client: TestClient):
+    payload = {
+        "childId": "test-aarav",
+        "activityId": "test-alphabet-match",
+        "completedSteps": 2,
+        "totalSteps": 2,
+        "outcome": "tried_helped",
+        "note": "Idempotent duplicate check",
+    }
+    # First post
+    res1 = client.post("/api/activity-logs", json=payload)
+    assert res1.status_code == 201
+    log1 = res1.json()
+
+    # Second post with identical payload (simulating repeated online event)
+    res2 = client.post("/api/activity-logs", json=payload)
+    assert res2.status_code == 201
+    log2 = res2.json()
+
+    # Must return the existing log and not create a new duplicate ID
+    assert log1["id"] == log2["id"]
+
