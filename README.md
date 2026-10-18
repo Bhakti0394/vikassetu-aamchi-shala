@@ -150,9 +150,9 @@ Request and response shapes, validation rules and error formats are documented i
 | Member | Module |
 |---|---|
 | Bhakti | Backend and database: schema, API, validation, seed data, API contract |
-| Member 2 | Observation management: the Record Observation form and saved observations |
-| Member 3 | Observation and recommendation engine, activity logs |
-| Member 4 | Dashboard, attendance, children profiles and progress charts |
+| Sarvesh | Observation management: the Record Observation form and saved observations |
+| Yash Desai | Observation and recommendation engine, activity logs |
+| Prachiti | Dashboard, attendance, children profiles and progress charts |
 
 ### Working together
 
