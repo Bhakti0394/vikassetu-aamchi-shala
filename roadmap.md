@@ -1,0 +1,3 @@
+- Restore the uploaded Bloom classroom app pages, shared data, and image into the blank project.
+- Improve mobile navigation and page layouts for common teacher tasks.
+- Fix verified functional/accessibility/runtime issues and validate the app on mobile and desktop.
