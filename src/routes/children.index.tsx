@@ -1,40 +1,64 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Plus, X } from "lucide-react";
-import { useStore, isPresentToday } from "@/lib/store";
 import { avgLevel, domainOf, strongestDomain, weakestDomain } from "@/lib/data";
 import { Avatar, PageHeader } from "@/components/ui-kit";
 import { cn } from "@/lib/utils";
+import { apiRequest } from "@/lib/api";
 
 export const Route = createFileRoute("/children/")({
   validateSearch: (s: Record<string, unknown>): { add?: boolean } =>
     s["add"] ? { add: true } : {},
-  head: () => ({
-    meta: [
-      { title: "Children — VikasSetu" },
-      {
-        name: "description",
-        content: "Every child's learning level, strengths and areas needing attention.",
-      },
-      { property: "og:title", content: "Children — VikasSetu" },
-      {
-        property: "og:description",
-        content: "Every child's learning level, strengths and areas needing attention.",
-      },
-    ],
-  }),
   component: ChildrenPage,
 });
 
 function ChildrenPage() {
-  const { children, attendance, addChild } = useStore();
   const { add } = Route.useSearch();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [name, setName] = useState("");
   const [age, setAge] = useState(4);
-  const list = children.filter((c) => c.name.toLowerCase().includes(q.toLowerCase()));
+  
+  const [childrenList, setChildrenList] = useState<any[]>([]);
+  const [attendanceMap, setAttendanceMap] = useState<any>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      apiRequest('/children'),
+      apiRequest('/attendance')
+    ]).then(([childrenData, attendanceData]: any) => {
+      setChildrenList(childrenData);
+      setAttendanceMap(attendanceData.attendance || {});
+      setLoading(false);
+    }).catch(err => {
+      console.error("Failed to load children:", err);
+      setLoading(false);
+    });
+  }, []);
+
+  const list = childrenList.filter((c) => c.name.toLowerCase().includes(q.toLowerCase()));
   const closeAdd = () => navigate({ to: "/children", search: {} });
+
+  const handleAddChild = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    try {
+      const newChild: any = await apiRequest('/children', {
+        method: 'POST',
+        body: JSON.stringify({ name: name.trim(), age })
+      });
+      navigate({ to: "/children/$id", params: { id: newChild.id } });
+    } catch (error) {
+      console.error("Failed to add child", error);
+    }
+  };
+
+  const checkIsPresentToday = (childId: string) => {
+    const today = new Date();
+    const dateKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    return attendanceMap[childId]?.[dateKey] ?? false;
+  };
 
   return (
     <div className="fade-up">
@@ -51,12 +75,7 @@ function ChildrenPage() {
 
       {add && (
         <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!name.trim()) return;
-            const id = addChild(name.trim(), age);
-            navigate({ to: "/children/$id", params: { id } });
-          }}
+          onSubmit={handleAddChild}
           className="card-soft fade-up mb-6 flex flex-col gap-3 p-5 sm:flex-row sm:items-end"
         >
           <label className="flex-1">
@@ -87,7 +106,7 @@ function ChildrenPage() {
               ))}
             </div>
           </label>
-          <button className="btn btn-primary h-12">Save</button>
+          <button type="submit" className="btn btn-primary h-12">Save</button>
           <button type="button" onClick={closeAdd} className="btn btn-ghost h-12">
             <X className="h-4 w-4" />
           </button>
@@ -104,53 +123,57 @@ function ChildrenPage() {
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 stagger">
-        {list.map((ch) => {
-          const present = isPresentToday(attendance, ch.id);
-          const strong = domainOf(strongestDomain(ch));
-          const weak = domainOf(weakestDomain(ch));
-          return (
-            <Link
-              key={ch.id}
-              to="/children/$id"
-              params={{ id: ch.id }}
-              className="card-soft tilt shine block p-5"
-            >
-              <div className="flex items-start gap-3">
-                <Avatar child={ch} />
-                <div className="flex-1">
-                  <p className="font-display text-xl font-bold">{ch.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {ch.age} years · Level {avgLevel(ch).toFixed(1)}/3
-                  </p>
+      {loading ? (
+        <div className="p-10 text-center font-bold text-muted-foreground">Loading class list...</div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 stagger">
+          {list.map((ch) => {
+            const present = checkIsPresentToday(ch.id);
+            const strong = domainOf(strongestDomain(ch));
+            const weak = domainOf(weakestDomain(ch));
+            return (
+              <Link
+                key={ch.id}
+                to="/children/$id"
+                params={{ id: ch.id }}
+                className="card-soft tilt shine block p-5"
+              >
+                <div className="flex items-start gap-3">
+                  <Avatar child={ch} />
+                  <div className="flex-1">
+                    <p className="font-display text-xl font-bold">{ch.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {ch.age} years · Level {avgLevel(ch).toFixed(1)}/3
+                    </p>
+                  </div>
+                  <span
+                    className={cn(
+                      "rounded-full px-2.5 py-1 text-xs font-bold",
+                      present ? "bg-primary-soft text-primary" : "bg-coral-soft text-coral",
+                    )}
+                  >
+                    {present ? "Present" : "Absent"}
+                  </span>
                 </div>
-                <span
-                  className={cn(
-                    "rounded-full px-2.5 py-1 text-xs font-bold",
-                    present ? "bg-primary-soft text-primary" : "bg-coral-soft text-coral",
-                  )}
-                >
-                  {present ? "Present" : "Absent"}
-                </span>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                <div className="rounded-xl bg-primary-soft p-3">
-                  <p className="text-xs font-bold text-muted-foreground">Strongest</p>
-                  <p className="font-bold">
-                    {strong.emoji} {strong.short}
-                  </p>
+                <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                  <div className="rounded-xl bg-primary-soft p-3">
+                    <p className="text-xs font-bold text-muted-foreground">Strongest</p>
+                    <p className="font-bold">
+                      {strong.emoji} {strong.short}
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-sun-soft p-3">
+                    <p className="text-xs font-bold text-muted-foreground">Needs attention</p>
+                    <p className="font-bold">
+                      {weak.emoji} {weak.short}
+                    </p>
+                  </div>
                 </div>
-                <div className="rounded-xl bg-sun-soft p-3">
-                  <p className="text-xs font-bold text-muted-foreground">Needs attention</p>
-                  <p className="font-bold">
-                    {weak.emoji} {weak.short}
-                  </p>
-                </div>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

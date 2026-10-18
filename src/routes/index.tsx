@@ -1,19 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Plus, PenLine, ArrowRight } from "lucide-react";
-import { useStore, isPresentToday } from "@/lib/store";
 import {
   DOMAINS,
-  needsAttention,
   recommendFor,
   domainOf,
   toneBg,
   toneFill,
-  avgLevel,
 } from "@/lib/data";
 import { Avatar, DomainChip } from "@/components/ui-kit";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
-import heroAsset from "@/assets/bloom-hero-teacher.png.asset.json";
+import { apiRequest } from "@/lib/api";
 
 function CountUp({ value }: { value: number }) {
   const [n, setN] = useState(0);
@@ -32,36 +29,40 @@ function CountUp({ value }: { value: number }) {
 }
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "Dashboard — VikasSetu" },
-      {
-        name: "description",
-        content: "Today's focus: which children need support and what activity to do next.",
-      },
-      { property: "og:title", content: "Dashboard — VikasSetu" },
-      {
-        property: "og:description",
-        content: "Today's focus: which children need support and what activity to do next.",
-      },
-    ],
-  }),
   component: Dashboard,
 });
 
 function Dashboard() {
-  const { children, attendance, completed } = useStore();
-  const present = children.filter((c) => isPresentToday(attendance, c.id)).length;
-  const attention = children.filter(needsAttention);
-  const focus = [...children].sort((a, b) => avgLevel(a) - avgLevel(b)).slice(0, 3);
+  const [summary, setSummary] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetching real data from Bhakti's API
+    apiRequest('/dashboard/summary')
+      .then((data) => {
+        setSummary(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load dashboard data:", err);
+        setLoading(false);
+      });
+  }, []);
+
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
+  if (loading || !summary) {
+    return <div className="p-10 text-center font-bold text-muted-foreground">Loading dashboard data...</div>;
+  }
+
+  const focus = summary.attentionList.slice(0, 3);
+
   const stats = [
-    { label: "Total Children", value: children.length, emoji: "🧒", tone: "bg-teal-soft" },
-    { label: "Present Today", value: present, emoji: "✅", tone: "bg-primary-soft" },
-    { label: "Need Attention", value: attention.length, emoji: "💛", tone: "bg-sun-soft" },
-    { label: "Activities Done", value: completed, emoji: "⭐", tone: "bg-coral-soft" },
+    { label: "Total Children", value: summary.totalChildren, emoji: "🧒", tone: "bg-teal-soft" },
+    { label: "Present Today", value: summary.presentToday, emoji: "✅", tone: "bg-primary-soft" },
+    { label: "Need Attention", value: summary.needsAttentionCount, emoji: "💛", tone: "bg-sun-soft" },
+    { label: "Activities Done", value: summary.activitiesDone, emoji: "⭐", tone: "bg-coral-soft" },
   ];
 
   return (
@@ -69,12 +70,6 @@ function Dashboard() {
       <section className="hero-gradient relative overflow-hidden rounded-3xl p-7 text-primary-foreground shadow-lift sm:p-10">
         <div className="blob pointer-events-none absolute -right-16 -top-20 h-72 w-72 bg-sun opacity-40" />
         <div className="blob pointer-events-none absolute -bottom-24 left-1/3 h-64 w-64 bg-primary-foreground opacity-10" />
-        <span className="float pointer-events-none absolute left-[46%] top-6 hidden text-3xl lg:block">
-          ⭐
-        </span>
-        <span className="float-slow pointer-events-none absolute bottom-8 left-[52%] hidden text-2xl lg:block">
-          ✏️
-        </span>
         <div className="relative grid items-center gap-6 lg:grid-cols-[1.1fr_1fr]">
           <div className="stagger">
             <p className="inline-flex items-center gap-2 rounded-full bg-primary-foreground/15 px-3 py-1 text-sm font-bold backdrop-blur">
@@ -100,13 +95,6 @@ function Dashboard() {
               </Link>
             </div>
           </div>
-          <img
-            src={heroAsset.url}
-            alt="Teacher playing learning games with playgroup children"
-            width={1024}
-            height={896}
-            className="float-slow relative mx-auto -mb-10 max-h-48 w-full max-w-[15rem] object-contain drop-shadow-2xl sm:max-h-none sm:max-w-md lg:-mb-14 lg:-mt-4"
-          />
         </div>
       </section>
 
@@ -145,7 +133,7 @@ function Dashboard() {
           </Link>
         </div>
         <div className="grid gap-4 md:grid-cols-3 stagger">
-          {focus.map((ch) => {
+          {focus.map((ch: any) => {
             const rec = recommendFor(ch)[0];
             if (!rec) return null;
             return (
@@ -195,9 +183,9 @@ function Dashboard() {
         <div className="space-y-5">
           {DOMAINS.map((d) => {
             const counts = [1, 2, 3].map(
-              (lvl) => children.filter((c) => c.scores[d.id] === lvl).length,
+              (lvl) => summary.domainDistribution[d.id]?.[lvl] || 0
             );
-            const total = children.length || 1;
+            const total = summary.totalChildren || 1;
             return (
               <div key={d.id}>
                 <div className="mb-2 flex items-center justify-between text-sm">
@@ -205,7 +193,7 @@ function Dashboard() {
                     {d.emoji} {d.name}
                   </span>
                   <span className="text-muted-foreground">
-                    {counts[2]} of {children.length} doing well
+                    {counts[2]} of {summary.totalChildren} doing well
                   </span>
                 </div>
                 <div className="flex h-4 overflow-hidden rounded-full bg-muted">
@@ -225,17 +213,6 @@ function Dashboard() {
               </div>
             );
           })}
-        </div>
-        <div className="mt-6 flex flex-wrap gap-4 text-sm font-semibold text-muted-foreground">
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-coral" /> Needs Support
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-sun" /> Developing
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-primary" /> Good
-          </span>
         </div>
       </section>
       <span className={toneBg.primary + " hidden"} />

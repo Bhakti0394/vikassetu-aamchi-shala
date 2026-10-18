@@ -1,36 +1,87 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useStore, isPresentToday, attendancePct } from "@/lib/store";
-import { dateKey } from "@/lib/data";
+import { useState, useEffect } from "react";
 import { Avatar, PageHeader } from "@/components/ui-kit";
 import { cn } from "@/lib/utils";
+import { apiRequest } from "@/lib/api";
 
 export const Route = createFileRoute("/attendance")({
-  head: () => ({
-    meta: [
-      { title: "Attendance — VikasSetu" },
-      {
-        name: "description",
-        content: "Mark daily attendance in one tap and see each child's monthly overview.",
-      },
-      { property: "og:title", content: "Attendance — VikasSetu" },
-      {
-        property: "og:description",
-        content: "Mark daily attendance in one tap and see each child's monthly overview.",
-      },
-    ],
-  }),
   component: Attendance,
 });
 
+// Helper to format date as YYYY-MM-DD for the API
+const getFormatDate = (d: Date) => 
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
 function Attendance() {
-  const { children, attendance, setPresent } = useStore();
+  const [childrenList, setChildrenList] = useState<any[]>([]);
+  const [attendanceMap, setAttendanceMap] = useState<any>({});
+  const [loading, setLoading] = useState(true);
+
   const today = new Date();
-  const present = children.filter((c) => isPresentToday(attendance, c.id)).length;
-  const pct = children.length ? Math.round((present / children.length) * 100) : 0;
+  const todayKey = getFormatDate(today);
+
+  // Generate days of the current month up to today (excluding Sundays)
   const days = Array.from(
     { length: today.getDate() },
     (_, i) => new Date(today.getFullYear(), today.getMonth(), i + 1),
   ).filter((d) => d.getDay() !== 0);
+
+  useEffect(() => {
+    Promise.all([
+      apiRequest('/children'),
+      apiRequest('/attendance')
+    ]).then(([childrenData, attendanceData]: any) => {
+      setChildrenList(childrenData);
+      setAttendanceMap(attendanceData.attendance || {});
+      setLoading(false);
+    }).catch(err => {
+      console.error("Failed to load attendance data:", err);
+      setLoading(false);
+    });
+  }, []);
+
+  const handleSetPresent = async (childId: string, isPresent: boolean) => {
+    // Optimistically update the UI instantly
+    setAttendanceMap((prev: any) => ({
+      ...prev,
+      [childId]: {
+        ...(prev[childId] || {}),
+        [todayKey]: isPresent
+      }
+    }));
+
+    try {
+      // Save to database
+      await apiRequest('/attendance', {
+        method: 'POST',
+        body: JSON.stringify({
+          childId: childId,
+          date: todayKey,
+          present: isPresent
+        })
+      });
+    } catch (error) {
+      console.error("Failed to save attendance:", error);
+      // If it fails, ideally we would revert the optimistic update here
+    }
+  };
+
+  const calculateMonthlyPct = (childId: string) => {
+    const childAtt = attendanceMap[childId] || {};
+    const totalRecorded = Object.keys(childAtt).length;
+    if (totalRecorded === 0) return 0;
+    const presentCount = Object.values(childAtt).filter(Boolean).length;
+    return Math.round((presentCount / totalRecorded) * 100);
+  };
+
+  if (loading) {
+    return <div className="p-10 text-center font-bold text-muted-foreground">Loading attendance...</div>;
+  }
+
+  // Calculate today's stats based ONLY on explicitly marked records
+  const presentToday = childrenList.filter((c) => attendanceMap[c.id]?.[todayKey] === true).length;
+  const absentToday = childrenList.filter((c) => attendanceMap[c.id]?.[todayKey] === false).length;
+  const pct = childrenList.length ? Math.round((presentToday / childrenList.length) * 100) : 0;
 
   return (
     <div className="fade-up">
@@ -46,22 +97,24 @@ function Attendance() {
 
       <div className="mb-6 grid grid-cols-3 gap-4">
         <div className="card-soft p-5">
-          <p className="font-display text-3xl font-bold text-primary">{present}</p>
+          <p className="font-display text-3xl font-bold text-primary">{presentToday}</p>
           <p className="text-sm font-semibold text-muted-foreground">Present</p>
         </div>
         <div className="card-soft p-5">
-          <p className="font-display text-3xl font-bold text-coral">{children.length - present}</p>
+          <p className="font-display text-3xl font-bold text-coral">{absentToday}</p>
           <p className="text-sm font-semibold text-muted-foreground">Absent</p>
         </div>
         <div className="card-soft p-5">
           <p className="font-display text-3xl font-bold">{pct}%</p>
-          <p className="text-sm font-semibold text-muted-foreground">Today</p>
+          <p className="text-sm font-semibold text-muted-foreground">Class Total Today</p>
         </div>
       </div>
 
       <div className="space-y-3 stagger">
-        {children.map((c) => {
-          const on = isPresentToday(attendance, c.id);
+        {childrenList.map((c) => {
+          // Status for today: true (Present), false (Absent), or undefined (Not marked yet)
+          const todayStatus = attendanceMap[c.id]?.[todayKey]; 
+
           return (
             <div
               key={c.id}
@@ -72,13 +125,14 @@ function Attendance() {
                 <div>
                   <p className="font-bold">{c.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {attendancePct(attendance, c.id)}% this month
+                    {calculateMonthlyPct(c.id)}% this month
                   </p>
                 </div>
               </div>
               <div className="flex flex-1 flex-wrap gap-1">
                 {days.map((d) => {
-                  const v = attendance[c.id]?.[dateKey(d)];
+                  const dKey = getFormatDate(d);
+                  const v = attendanceMap[c.id]?.[dKey];
                   return (
                     <span
                       key={d.getDate()}
@@ -93,16 +147,16 @@ function Attendance() {
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setPresent(c.id, true)}
-                  className={cn("btn px-4 py-2", on ? "btn-primary" : "btn-ghost")}
+                  onClick={() => handleSetPresent(c.id, true)}
+                  className={cn("btn px-4 py-2", todayStatus === true ? "btn-primary" : "btn-ghost")}
                 >
                   Present
                 </button>
                 <button
-                  onClick={() => setPresent(c.id, false)}
+                  onClick={() => handleSetPresent(c.id, false)}
                   className={cn(
                     "btn px-4 py-2",
-                    !on ? "bg-coral text-primary-foreground" : "btn-ghost",
+                    todayStatus === false ? "bg-coral text-primary-foreground" : "btn-ghost",
                   )}
                 >
                   Absent

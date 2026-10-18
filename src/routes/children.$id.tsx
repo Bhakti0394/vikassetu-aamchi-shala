@@ -1,32 +1,41 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, PenLine, CheckCircle2, HeartHandshake } from "lucide-react";
-import { useStore, isPresentToday, attendancePct } from "@/lib/store";
+import { useState, useEffect } from "react";
 import { recommendFor, activityOf, domainOf, toneBg } from "@/lib/data";
 import { Avatar, DomainBars, DomainChip, ScoreBadge, StartButton } from "@/components/ui-kit";
 import { cn } from "@/lib/utils";
+import { apiRequest } from "@/lib/api";
 
 export const Route = createFileRoute("/children/$id")({
-  head: () => ({
-    meta: [
-      { title: "Child profile — VikasSetu" },
-      {
-        name: "description",
-        content: "Learning overview, strengths, needs and recommended activities for a child.",
-      },
-      { property: "og:title", content: "Child profile — VikasSetu" },
-      {
-        property: "og:description",
-        content: "Learning overview, strengths, needs and recommended activities for a child.",
-      },
-    ],
-  }),
   component: Profile,
 });
 
 function Profile() {
   const { id } = Route.useParams();
-  const { children, observations, attendance } = useStore();
-  const ch = children.find((c) => c.id === id);
+  
+  const [ch, setCh] = useState<any>(null);
+  const [obs, setObs] = useState<any[]>([]);
+  const [attendanceMap, setAttendanceMap] = useState<any>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      apiRequest(`/children/${id}`),
+      apiRequest(`/observations?child_id=${id}`),
+      apiRequest('/attendance')
+    ]).then(([childData, obsData, attData]: any) => {
+      setCh(childData);
+      setObs(obsData);
+      setAttendanceMap(attData.attendance || {});
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
+  }, [id]);
+
+  if (loading) return <div className="py-20 text-center text-muted-foreground font-bold">Loading child profile...</div>;
+  
   if (!ch)
     return (
       <div className="py-20 text-center">
@@ -38,8 +47,16 @@ function Profile() {
     );
 
   const recs = recommendFor(ch);
-  const obs = observations.filter((o) => o.childId === ch.id);
-  const present = isPresentToday(attendance, ch.id);
+  
+  // Calculate attendance status and percentage
+  const today = new Date();
+  const dateKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const present = attendanceMap[ch.id]?.[dateKey] ?? false;
+  
+  const childAtt = attendanceMap[ch.id] || {};
+  const totalDays = Object.keys(childAtt).length;
+  const presentDays = Object.values(childAtt).filter(Boolean).length;
+  const attPct = totalDays === 0 ? 0 : Math.round((presentDays / totalDays) * 100);
 
   return (
     <div className="fade-up space-y-6">
@@ -61,7 +78,7 @@ function Profile() {
           <h1 className="text-4xl font-bold">{ch.name}</h1>
           <p className="mt-1 font-semibold text-muted-foreground">
             {ch.age} years · {present ? "Present today" : "Absent today"} ·{" "}
-            {attendancePct(attendance, ch.id)}% attendance
+            {attPct}% attendance
           </p>
         </div>
         <Link to="/progress" search={{ child: ch.id }} className="btn btn-primary">
@@ -83,7 +100,7 @@ function Profile() {
               <CheckCircle2 className="h-5 w-5 text-primary" /> What {ch.name} is doing well
             </h3>
             <ul className="space-y-2">
-              {(ch.strengths.length ? ch.strengths : ["Observations coming soon"]).map((s) => (
+              {(ch.strengths.length ? ch.strengths : ["Observations coming soon"]).map((s: string) => (
                 <li key={s} className="rounded-xl bg-primary-soft px-3 py-2 text-sm font-semibold">
                   {s}
                 </li>
@@ -95,7 +112,7 @@ function Profile() {
               <HeartHandshake className="h-5 w-5 text-coral" /> Needs more support
             </h3>
             <ul className="space-y-2">
-              {ch.needs.map((s) => (
+              {ch.needs.map((s: string) => (
                 <li key={s} className="rounded-xl bg-sun-soft px-3 py-2 text-sm font-semibold">
                   {s}
                 </li>
