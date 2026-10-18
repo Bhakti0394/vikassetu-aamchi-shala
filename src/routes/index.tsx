@@ -148,6 +148,7 @@ function Dashboard() {
           {focus.map((ch) => {
             const rec = recommendFor(ch, observations)[0];
             if (!rec) return null;
+            const dom = domainOf(rec.domain);
             return (
               <div key={ch.id} className="card-soft tilt shine flex flex-col p-5">
                 <Link to="/children/$id" params={{ id: ch.id }} className="flex items-center gap-3">
@@ -155,7 +156,7 @@ function Dashboard() {
                   <div>
                     <p className="font-display text-xl font-bold">{ch.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      Level {rec.level}/3 in {domainOf(rec.domain).short}
+                      Level {rec.level}/3 in {dom?.short ?? rec.domain}
                     </p>
                   </div>
                 </Link>

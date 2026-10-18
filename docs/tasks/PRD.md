@@ -105,3 +105,29 @@ Empower preschool teachers with an explainable, rule-based activity recommendati
   - `pytest` passes (8/8 backend tests passing)
   - `npm run build` succeeds cleanly
   - Boundary audit verified: zero edits to `store.tsx`, `api.ts`, or untouched backend routers.
+
+### Phase 2: Activity Hub Execution & Child Profile Integration
+
+- [x] **TASK-11: Activity History & In-Memory Offline Sync Queue** (`src/lib/activityLogs.ts`)
+  - Implement `fetchChildActivityHistory(childId)`
+  - Implement purely in-memory offline sync queue (`queuePendingTrial`, `getPendingTrials`, `syncPendingTrials`) without localStorage
+  - Add comprehensive automated tests in `src/lib/activityLogs.test.ts` (12 passing tests)
+
+- [x] **TASK-12: Interactive Activity Guide Logging & Step Completion** (`src/routes/activities.$id.tsx`)
+  - Add child selector dropdown / switch capability
+  - Implement step-count tracking (`completedSteps` strictly from teacher's checklist, `completedSteps <= totalSteps`)
+  - Add 3 outcome buttons (`"Tried — Helped"`, `"Tried — Needs Support"`, `"Not Tried"`) and notes field
+  - Display previous trial outcomes for this activity and child
+  - Support in-memory offline queueing with amber pending badge
+
+- [x] **TASK-13: 360° Child Profile Activity Timeline & Recommendation Integration** (`src/routes/children.$id.tsx`)
+  - Integrate `logs` into `recommendFor(ch, obs, logs)` on child profile
+  - Add Activity Trials Timeline section displaying past trials with outcome badges and step counts
+  - Display pending in-memory sync badge and sync trigger if trials are pending
+  - Strictly maintain supportive, non-diagnostic wording and existing design
+
+- [x] **TASK-14: Verification, Boundary Audit & Documentation Sync**
+  - Run `npm test` (34/34 passing), `pytest` (8/8 passing), `npm run build` (client & Nitro SSR clean)
+  - Conduct strict boundary audit (`store.tsx`, `api.ts`, protected routers, shared tables untouched)
+  - Verify `ActivityLogCreate` validator remains documented as pending Bhakti's approval
+  - Update `docs/tasks/progress.txt` and `.planning/STATE.md`

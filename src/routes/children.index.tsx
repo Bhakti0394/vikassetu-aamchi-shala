@@ -137,13 +137,13 @@ function ChildrenPage() {
                 <div className="rounded-xl bg-primary-soft p-3">
                   <p className="text-xs font-bold text-muted-foreground">Strongest</p>
                   <p className="font-bold">
-                    {strong.emoji} {strong.short}
+                    {strong ? `${strong.emoji} ${strong.short}` : "—"}
                   </p>
                 </div>
                 <div className="rounded-xl bg-sun-soft p-3">
                   <p className="text-xs font-bold text-muted-foreground">Needs attention</p>
                   <p className="font-bold">
-                    {weak.emoji} {weak.short}
+                    {weak ? `${weak.emoji} ${weak.short}` : "—"}
                   </p>
                 </div>
               </div>

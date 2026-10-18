@@ -88,6 +88,7 @@ export function ScoreBadge({ score }: { score: Score }) {
 
 export function DomainChip({ id }: { id: DomainId }) {
   const d = domainOf(id);
+  if (!d) return null;
   return (
     <span
       className={cn(
