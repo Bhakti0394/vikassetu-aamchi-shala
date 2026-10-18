@@ -24,13 +24,38 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://localhost:8080",
         "http://127.0.0.1:8080",
+        "http://localhost:8081",
+        "http://127.0.0.1:8081",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Root & Info endpoints
+@app.get("/", tags=["Root"])
+def root():
+    return {
+        "status": "running",
+        "service": "VikasSetu API",
+        "docs": "/docs",
+        "health": "/api/health",
+        "endpoints": {
+            "children": "/api/children",
+            "activities": "/api/activities",
+            "observations": "/api/observations",
+            "attendance": "/api/attendance",
+            "activity_logs": "/api/activity-logs",
+            "dashboard": "/api/dashboard/summary",
+        },
+    }
+
+@app.get("/api", tags=["Root"])
+def api_root():
+    return root()
 
 # Health check
 @app.get("/api/health", response_model=HealthResponse, tags=["Health"])

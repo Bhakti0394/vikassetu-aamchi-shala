@@ -13,7 +13,7 @@ def get_activity_logs(child_id: Optional[str] = None, db: Session = Depends(get_
     query = db.query(ActivityLog)
     if child_id:
         query = query.filter(ActivityLog.child_id == child_id)
-    return query.order_by(ActivityLog.id.desc()).all()
+    return query.order_by(ActivityLog.created_at.desc(), ActivityLog.id.desc()).all()
 
 @router.post("", response_model=ActivityLogResponse, status_code=status.HTTP_201_CREATED)
 def create_activity_log(payload: ActivityLogCreate, db: Session = Depends(get_db)):

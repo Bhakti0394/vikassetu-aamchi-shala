@@ -458,29 +458,4 @@ export function needsAttention(ch: Child) {
   return DOMAINS.some((d) => ch.scores[d.id] === 1);
 }
 
-export type Recommendation = {
-  child: Child;
-  domain: DomainId;
-  activity: Activity;
-  level: Score;
-  reason: string;
-};
-
-export function recommendFor(ch: Child): Recommendation[] {
-  return DOMAINS.filter((d) => ch.scores[d.id] < 3)
-    .sort((a, b) => ch.scores[a.id] - ch.scores[b.id])
-    .slice(0, 2)
-    .map((d) => {
-      const level = ch.scores[d.id];
-      const activity =
-        ACTIVITIES.find((a) => a.domain === d.id && a.forLevel.includes(level)) ??
-        ACTIVITIES.find((a) => a.domain === d.id)!;
-      return {
-        child: ch,
-        domain: d.id,
-        activity,
-        level,
-        reason: `Recommended because ${d.name} is currently at Level ${level}.`,
-      };
-    });
-}
+export { type Recommendation, recommendFor } from "./recommend";
