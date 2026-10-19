@@ -225,7 +225,9 @@ function RecommendationsPage() {
         setAiRecsMap((prev) => {
           const next = { ...prev };
           for (const item of aiResult.recommendations) {
-            // Strictly key by childId:activityId
+            // Key by childId:domain so recommendations for a domain resolve the AI-selected activity
+            next[`${child.id}:${item.domain}`] = item;
+            // Also key by childId:activityId
             next[`${child.id}:${item.activityId}`] = item;
           }
           return next;
@@ -381,7 +383,10 @@ function RecommendationsPage() {
               .map((l) => l.activityId),
           );
 
-          const aiItem = aiRecsMap[`${r.child.id}:${r.activity.id}`];
+          // Resolve AI item by child + domain first, then fallback to child + activityId
+          const aiItem =
+            aiRecsMap[`${r.child.id}:${r.domain}`] ||
+            aiRecsMap[`${r.child.id}:${r.activity.id}`];
 
           // If AI engine recommended a specific alternative, resolve it only if untried
           const activeActivity =
