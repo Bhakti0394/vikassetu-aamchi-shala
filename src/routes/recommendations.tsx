@@ -16,6 +16,7 @@ import {
   TrendingUp,
   Bot,
   HelpCircle,
+  Compass,
 } from "lucide-react";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useStore } from "@/lib/store";
@@ -26,6 +27,12 @@ import { recommendFor, analyseChild, type Recommendation } from "@/lib/recommend
 import {
   fetchActivityLogs,
   saveActivityLog,
+  queuePendingTrial,
+  initOfflineQueue,
+  getPendingTrials,
+  registerTrialChangeListener,
+  registerAutoSyncOnOnline,
+  isCompletedTrial,
   type ActivityLogOutcome,
   type ActivityLogRecord,
 } from "@/lib/activityLogs";
@@ -93,22 +100,45 @@ function RecommendationsPage() {
   const [aiStatus, setAiStatus] = useState<{ configured: boolean; model: string } | null>(null);
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
 
+  const refreshAllLogs = async () => {
+    await initOfflineQueue();
+    const queued = getPendingTrials();
+    const res = await fetchActivityLogs();
+    if (!isMountedRef.current) return;
+
+    const confirmed = res.success ? res.data : [];
+    const queuedAsRecords: ActivityLogRecord[] = queued.map((q, idx) => ({
+      ...q,
+      id: -(idx + 1),
+      createdAt: q.queuedAt,
+    }));
+
+    // Merge: queued trials take precedence over confirmed trials
+    setLogs([...queuedAsRecords, ...confirmed]);
+    setIsLoadingLogs(false);
+  };
+
   // 1. Initial Activity Logs & AI Backend Status Fetch
   useEffect(() => {
-    fetchActivityLogs().then((res) => {
-      if (isMountedRef.current && res.success) {
-        setLogs(res.data);
-      }
-      if (isMountedRef.current) {
-        setIsLoadingLogs(false);
-      }
-    });
+    refreshAllLogs();
 
     checkAIStatus().then((status) => {
       if (isMountedRef.current) {
         setAiStatus(status);
       }
     });
+
+    const unsubTrial = registerTrialChangeListener(() => {
+      refreshAllLogs();
+    });
+    const unsubOnline = registerAutoSyncOnOnline(() => {
+      refreshAllLogs();
+    });
+
+    return () => {
+      unsubTrial();
+      unsubOnline();
+    };
   }, []);
 
   // Include all children, ensuring persistent seed children like Yash are always present
@@ -165,24 +195,25 @@ function RecommendationsPage() {
     if (isLoadingLogs) return;
 
     for (const child of observedChildren) {
-      // Evidence fingerprint invalidates cache when observations or logs change
+      const childLogs = logs.filter((l) => l.childId === child.id);
+      const completedIds = childLogs
+        .filter((l) => isCompletedTrial(l.outcome))
+        .map((l) => l.activityId);
+
       const childObsDates = observations
         .filter((o) => o.childId === child.id)
         .map((o) => o.date);
-      const childLogCount = logs.filter((l) => l.childId === child.id).length;
-      const fingerprint = createEvidenceFingerprint(childObsDates, childLogCount);
+      const fingerprint = createEvidenceFingerprint(childObsDates, childLogs.length, completedIds);
 
       const childObs = observations.filter((o) => o.childId === child.id);
-      const childTrials = logs
-        .filter((l) => l.childId === child.id)
-        .map((l) => ({
-          activityId: l.activityId,
-          outcome: l.outcome,
-          note: l.note,
-          completedSteps: l.completedSteps,
-          totalSteps: l.totalSteps,
-          createdAt: l.createdAt,
-        }));
+      const childTrials = childLogs.map((l) => ({
+        activityId: l.activityId,
+        outcome: l.outcome,
+        note: l.note,
+        completedSteps: l.completedSteps,
+        totalSteps: l.totalSteps,
+        createdAt: l.createdAt,
+      }));
 
       fetchPersonalizedRecommendations(child.id, fingerprint, {
         child,
@@ -194,8 +225,7 @@ function RecommendationsPage() {
         setAiRecsMap((prev) => {
           const next = { ...prev };
           for (const item of aiResult.recommendations) {
-            // Map by childId:domain and childId:activityId for resilient lookup
-            next[`${child.id}:${item.domain}`] = item;
+            // Strictly key by childId:activityId
             next[`${child.id}:${item.activityId}`] = item;
           }
           return next;
@@ -221,7 +251,7 @@ function RecommendationsPage() {
     setSavingKey(key);
     const note = activeNotes[key]?.trim();
 
-    const res = await saveActivityLog({
+    const payload = {
       childId,
       activityId,
       completedSteps:
@@ -233,14 +263,14 @@ function RecommendationsPage() {
       totalSteps,
       outcome,
       note: note || undefined,
-    });
+    };
 
+    const res = await saveActivityLog(payload);
     setSavingKey(null);
 
     if (res.success && res.data) {
-      // Invalidate recommendation cache so subsequent recommendations adapt immediately
       invalidateRecommendationCache(childId);
-      setLogs((prev) => [res.data!, ...prev]);
+      setLogs((prev) => [res.data!, ...prev.filter((l) => l.id !== res.data!.id)]);
       setInlineStatus((prev) => ({
         ...prev,
         [key]: {
@@ -248,17 +278,25 @@ function RecommendationsPage() {
           message: `Saved outcome: "${formatOutcomeLabel(outcome)}"`,
         },
       }));
-      // Clear notes after save
       setActiveNotes((prev) => ({ ...prev, [key]: "" }));
     } else {
-      // Surface failure inline without crashing page
+      // Offline fallback: save to persistent offline queue immediately
+      const queuedItem = queuePendingTrial(payload, res.error);
+      invalidateRecommendationCache(childId);
+      const offlineRecord: ActivityLogRecord = {
+        ...queuedItem,
+        id: -Date.now(),
+        createdAt: queuedItem.queuedAt,
+      };
+      setLogs((prev) => [offlineRecord, ...prev]);
       setInlineStatus((prev) => ({
         ...prev,
         [key]: {
-          type: "error",
-          message: res.error || "Backend unavailable",
+          type: "success",
+          message: `Saved offline: "${formatOutcomeLabel(outcome)}" (pending sync)`,
         },
       }));
+      setActiveNotes((prev) => ({ ...prev, [key]: "" }));
     }
   };
 
@@ -336,14 +374,20 @@ function RecommendationsPage() {
       {/* Main Recommendations List */}
       <div className="space-y-6 stagger">
         {baseRecs.map(({ recommendation: r, unobservedDomains }) => {
-          // Lookup AI personalized pedagogy
-          const aiItem =
-            aiRecsMap[`${r.child.id}:${r.activity.id}`] ||
-            aiRecsMap[`${r.child.id}:${r.domain}`];
+          // Strict filtering: ensure completed activities are never resolved as active
+          const childCompletedIds = new Set(
+            logs
+              .filter((l) => l.childId === r.child.id && isCompletedTrial(l.outcome))
+              .map((l) => l.activityId),
+          );
 
-          // If AI engine recommended a specific alternative, resolve it from the catalog
+          const aiItem = aiRecsMap[`${r.child.id}:${r.activity.id}`];
+
+          // If AI engine recommended a specific alternative, resolve it only if untried
           const activeActivity =
-            (aiItem?.activityId && ACTIVITIES.find((a) => a.id === aiItem.activityId)) ||
+            (aiItem?.activityId &&
+              !childCompletedIds.has(aiItem.activityId) &&
+              ACTIVITIES.find((a) => a.id === aiItem.activityId)) ||
             r.activity;
 
           const d = domainOf(activeActivity.domain || r.domain);
@@ -491,6 +535,18 @@ function RecommendationsPage() {
                       </p>
                       <p className="mt-1.5 text-xs leading-relaxed text-foreground font-medium">
                         {aiItem.teachingStrategy}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Scaffolding Adaptation */}
+                  {(r.scaffoldingNote || aiItem?.nextStepIfSupportNeeded) && (
+                    <div className="mt-3 rounded-xl border border-amber/30 bg-amber-soft/40 p-3.5 text-xs text-amber-900 dark:text-amber-100">
+                      <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                        <Compass className="h-4 w-4" /> Scaffolding Adaptation:
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed font-medium">
+                        {r.scaffoldingNote || aiItem?.nextStepIfSupportNeeded}
                       </p>
                     </div>
                   )}

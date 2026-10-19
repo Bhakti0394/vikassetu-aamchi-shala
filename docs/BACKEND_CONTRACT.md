@@ -26,13 +26,17 @@ backend/
 │       ├── observations.py  # /api/observations endpoints & score derivation trigger
 │       ├── attendance.py    # /api/attendance & bulk marking
 │       ├── activity_logs.py # /api/activity-logs (Member 3)
+│       ├── recommendations.py # /api/recommendations/personalized & /status (Member 3)
 │       └── dashboard.py     # /api/dashboard/summary (Asia/Kolkata timezone)
+│   ├── ai_recommendations.py # Groq LLM integration & deterministic pedagogical fallback (Member 3)
 ├── tests/
 │   ├── __init__.py
 │   ├── conftest.py          # In-memory SQLite test fixtures
 │   ├── test_children.py
 │   ├── test_observations.py
 │   ├── test_attendance.py
+│   ├── test_activity_logs.py
+│   ├── test_recommendations.py
 │   └── test_dashboard.py
 ├── seed_data.py             # ACTIVITIES, SEED_CHILDREN, SEED_OBSERVATIONS & seed_attendance()
 ├── seed.py                  # Seed script with baseline observations & score derivation verification
@@ -373,6 +377,68 @@ class ActivityLogResponse(CamelModel):
     note: Optional[str]
     created_at: str
 
+# --- Recommendations (Member 3) ---
+class ClientChildData(BaseModel):
+    id: str
+    name: str
+    age: Optional[float] = 4.0
+    strengths: Optional[List[str]] = []
+    needs: Optional[List[str]] = []
+    scores: Optional[dict] = {}
+
+class ClientObservation(BaseModel):
+    id: Optional[str] = None
+    child_id: Optional[str] = None
+    childId: Optional[str] = None
+    domain: str
+    score: Optional[int] = None
+    note: Optional[str] = None
+    date: Optional[str] = None
+
+class ClientTrial(BaseModel):
+    activity_id: Optional[str] = None
+    activityId: Optional[str] = None
+    outcome: str
+    note: Optional[str] = None
+    completed_steps: Optional[int] = None
+    total_steps: Optional[int] = None
+    created_at: Optional[str] = None
+
+class PersonalizedRecommendationRequest(BaseModel):
+    child_id: str
+    limit_domains: int = 2
+    child_data: Optional[ClientChildData] = None
+    observations: Optional[List[ClientObservation]] = None
+    recent_trials: Optional[List[ClientTrial]] = None
+
+class RecommendationPedagogy(BaseModel):
+    activity_id: str
+    domain: str
+    title: str
+    reason: str
+    observed_strengths: List[str] = Field(default_factory=list)
+    focus_skills: List[str] = Field(default_factory=list)
+    teaching_strategy: str
+    teacher_steps: List[str] = Field(default_factory=list)
+    success_criteria: str
+    next_step_if_successful: str
+    next_step_if_support_needed: str
+    evidence: List[str] = Field(default_factory=list)
+    is_ai_generated: bool = True
+
+class ChildRecommendationResult(BaseModel):
+    child_id: str
+    recommendations: List[RecommendationPedagogy]
+    generated_at: str
+    model_used: Optional[str] = None
+    fallback: bool = False
+    fallback_reason: Optional[str] = None
+
+class AIStatusResponse(BaseModel):
+    configured: bool
+    model: str
+    engine: str = "Groq Hybrid Recommendation Engine"
+
 # --- Dashboard ---
 class DashboardSummaryResponse(CamelModel):
     total_children: int
@@ -491,6 +557,22 @@ Applies on `POST /api/observations`, `PUT /api/observations/{id}`, and `DELETE /
    `needs_attention_count` and `attention_list` count **only domains whose latest observation score is 1**. Children with no observations or only unobserved default scores are excluded. Ordered by lowest average score among observed domains.
 5. **`domain_distribution`:** Counts **only observed domains**. Unobserved domains are not tallied.
 
+### D. Recommendation Engine & Pedagogical Lifecycle (Member 3)
+
+Operates via hybrid AI-powered recommendations (`POST /api/recommendations/personalized`) and status checks (`GET /api/recommendations/status`):
+
+1. **Two-Active-Recommendation Invariant:**  
+   The recommendation engine maintains exactly **2 active, observation-driven learning recommendations** per child whenever at least 2 eligible activities exist.
+2. **Completed Activity Exclusion:**  
+   Activities already completed in classroom trials (recorded as `tried_helped`, `tried_needs_support`, or `not_tried`) are excluded from pending recommendations so that Anganwadi teachers are never presented with redundant tasks.
+3. **Pedagogical Scaffolding for `tried_needs_support`:**  
+   When a child's recent classroom trial resulted in `tried_needs_support`, the engine detects this outcome and generates an explicit **support adaptation note** (linking back to the prior activity and prescribing simplified micro-steps, visual aids, or peer modeling).
+4. **Hybrid AI & Deterministic Fallback:**  
+   - Leverages Groq LLM (e.g. `openai/gpt-oss-120b`) with positive, non-diagnostic pedagogical prompts adhering strictly to preschool learning goals (Ages 3–4).
+   - If Groq credentials are unconfigured, rate-limited, or offline, the engine automatically falls back to local deterministic rule-based pedagogy with `fallback: true` without errors or user interruption.
+5. **Privacy & Security Guarantee:**  
+   No child PII or tokens are exposed; `/api/recommendations/status` reports engine readiness without revealing API credentials.
+
 ---
 
 ## 6. Endpoints Specification
@@ -498,26 +580,28 @@ Applies on `POST /api/observations`, `PUT /api/observations/{id}`, and `DELETE /
 Base URL: `/api`  
 Error Format: `{ "detail": "..." }` or `{ "detail": [{ "loc": [...], "msg": "..." }] }` (FastAPI 422 standard)
 
-| Method   | Endpoint                 | Request Body                               | Status Code           | Response                    | Description                                                                             |
-| -------- | ------------------------ | ------------------------------------------ | --------------------- | --------------------------- | --------------------------------------------------------------------------------------- |
-| `GET`    | `/api/health`            | None                                       | `200`                 | `{"status": "healthy"}`     | Health check                                                                            |
-| `GET`    | `/api/children`          | None                                       | `200`                 | `List[ChildResponse]`       | List all children (with `observedDomains`)                                              |
-| `POST`   | `/api/children`          | `ChildCreate`                              | `201`                 | `ChildResponse`             | Create child with slug ID & pending status                                              |
-| `GET`    | `/api/children/{id}`     | None                                       | `200` / `404`         | `ChildResponse`             | Retrieve child profile                                                                  |
-| `PUT`    | `/api/children/{id}`     | `ChildUpdate`                              | `200` / `404`         | `ChildResponse`             | Update child name/age                                                                   |
-| `DELETE` | `/api/children/{id}`     | None                                       | `204` / `404`         | Empty (No Content)          | Cascade deletes child & related records                                                 |
-| `GET`    | `/api/observations`      | Query: `?child_id=&include_baseline=false` | `200`                 | `List[ObservationResponse]` | Get observations list (**excludes baseline by default**, ordered by date desc, id desc) |
-| `POST`   | `/api/observations`      | `ObservationCreate`                        | `201` / `404` / `422` | `ObservationResponse`       | Add observation & update scores                                                         |
-| `PUT`    | `/api/observations/{id}` | `ObservationUpdate`                        | `200` / `404` / `422` | `ObservationResponse`       | Merged validation update & recalculate scores                                           |
-| `DELETE` | `/api/observations/{id}` | None                                       | `204` / `404`         | Empty (No Content)          | Delete observation & recalculate scores                                                 |
-| `GET`    | `/api/attendance`        | Query: `?month=`                           | `200`                 | `AttendanceMapResponse`     | Full monthly attendance matrix                                                          |
-| `POST`   | `/api/attendance`        | `AttendanceRecord`                         | `200` / `201`         | `AttendanceRecord`          | Upsert single child attendance                                                          |
-| `POST`   | `/api/attendance/bulk`   | `BulkAttendanceCreate`                     | `200`                 | `Dict[str, int]`            | Bulk upsert class attendance for date                                                   |
-| `GET`    | `/api/activities`        | Query: `?domain=`                          | `200`                 | `List[ActivityResponse]`    | List activity library                                                                   |
-| `GET`    | `/api/activities/{id}`   | None                                       | `200` / `404`         | `ActivityResponse`          | Get single activity                                                                     |
-| `GET`    | `/api/activity-logs`     | Query: `?child_id=`                        | `200`                 | `List[ActivityLogResponse]` | Filter activity logs by child (ordered newest-first by `created_at desc, id desc`)      |
-| `POST`   | `/api/activity-logs`     | `ActivityLogCreate`                        | `201` / `404`         | `ActivityLogResponse`       | Log guided activity completion                                                          |
-| `GET`    | `/api/dashboard/summary` | None                                       | `200`                 | `DashboardSummaryResponse`  | Dashboard KPIs & observed score distributions                                           |
+| Method   | Endpoint                            | Request Body                               | Status Code           | Response                    | Description                                                                             |
+| -------- | ----------------------------------- | ------------------------------------------ | --------------------- | --------------------------- | --------------------------------------------------------------------------------------- |
+| `GET`    | `/api/health`                       | None                                       | `200`                 | `{"status": "healthy"}`     | Health check                                                                            |
+| `GET`    | `/api/children`                     | None                                       | `200`                 | `List[ChildResponse]`       | List all children (with `observedDomains`)                                              |
+| `POST`   | `/api/children`                     | `ChildCreate`                              | `201`                 | `ChildResponse`             | Create child with slug ID & pending status                                              |
+| `GET`    | `/api/children/{id}`                | None                                       | `200` / `404`         | `ChildResponse`             | Retrieve child profile                                                                  |
+| `PUT`    | `/api/children/{id}`                | `ChildUpdate`                              | `200` / `404`         | `ChildResponse`             | Update child name/age                                                                   |
+| `DELETE` | `/api/children/{id}`                | None                                       | `204` / `404`         | Empty (No Content)          | Cascade deletes child & related records                                                 |
+| `GET`    | `/api/observations`                 | Query: `?child_id=&include_baseline=false` | `200`                 | `List[ObservationResponse]` | Get observations list (**excludes baseline by default**, ordered by date desc, id desc) |
+| `POST`   | `/api/observations`                 | `ObservationCreate`                        | `201` / `404` / `422` | `ObservationResponse`       | Add observation & update scores                                                         |
+| `PUT`    | `/api/observations/{id}`            | `ObservationUpdate`                        | `200` / `404` / `422` | `ObservationResponse`       | Merged validation update & recalculate scores                                           |
+| `DELETE` | `/api/observations/{id}`            | None                                       | `204` / `404`         | Empty (No Content)          | Delete observation & recalculate scores                                                 |
+| `GET`    | `/api/attendance`                   | Query: `?month=`                           | `200`                 | `AttendanceMapResponse`     | Full monthly attendance matrix                                                          |
+| `POST`   | `/api/attendance`                   | `AttendanceRecord`                         | `200` / `201`         | `AttendanceRecord`          | Upsert single child attendance                                                          |
+| `POST`   | `/api/attendance/bulk`              | `BulkAttendanceCreate`                     | `200`                 | `Dict[str, int]`            | Bulk upsert class attendance for date                                                   |
+| `GET`    | `/api/activities`                   | Query: `?domain=`                          | `200`                 | `List[ActivityResponse]`    | List activity library                                                                   |
+| `GET`    | `/api/activities/{id}`              | None                                       | `200` / `404`         | `ActivityResponse`          | Get single activity                                                                     |
+| `GET`    | `/api/activity-logs`                | Query: `?child_id=`                        | `200`                 | `List[ActivityLogResponse]` | Filter activity logs by child (ordered newest-first by `created_at desc, id desc`)      |
+| `POST`   | `/api/activity-logs`                | `ActivityLogCreate`                        | `201` / `404`         | `ActivityLogResponse`       | Log guided activity completion                                                          |
+| `GET`    | `/api/recommendations/status`       | None                                       | `200`                 | `AIStatusResponse`          | Get Groq AI integration readiness, configured model, and engine mode                     |
+| `POST`   | `/api/recommendations/personalized` | `PersonalizedRecommendationRequest`        | `200` / `404`         | `ChildRecommendationResult` | Observation-driven personalized pedagogy with Groq AI + deterministic fallback           |
+| `GET`    | `/api/dashboard/summary`            | None                                       | `200`                 | `DashboardSummaryResponse`  | Dashboard KPIs & observed score distributions                                           |
 
 ---
 
@@ -612,7 +696,7 @@ app.add_middleware(
 | Team Member  | Module                               | Endpoints Assigned                                                                                                                                                                                                                                                                                     |
 | ------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Member 2** | **Observations Engine**              | • `POST /api/observations` (record observation & trigger score update)<br>• `PUT /api/observations/{id}` (merged validation edit & recalculate)<br>• `DELETE /api/observations/{id}` (delete & recalculate)<br>• `GET /api/observations` (history & filter by `?child_id=`, default excludes baseline) |
-| **Member 3** | **Recommendations & Guided Play**    | • `GET /api/activities` & `GET /api/activities/{id}` (activities metadata)<br>• `POST /api/activity-logs` (record activity steps, outcome, note)<br>• `GET /api/activity-logs?child_id=` (audit logs per child)<br>• Consumes `Child.scores` to compute recommendations on the frontend                |
+| **Member 3** | **Recommendations & Guided Play**    | • `GET /api/activities` & `GET /api/activities/{id}` (activities metadata)<br>• `POST /api/activity-logs` (record activity steps, outcome, note)<br>• `GET /api/activity-logs?child_id=` (audit logs per child)<br>• `POST /api/recommendations/personalized` (hybrid Groq AI + deterministic pedagogical recommendations)<br>• `GET /api/recommendations/status` (AI model & readiness check)<br>• Enforces 2-active recommendation lifecycle, completion exclusion, and scaffolding adaptations |
 | **Member 4** | **Dashboard, Attendance & Profiles** | • `GET /api/dashboard/summary` (aggregated stats in `Asia/Kolkata`)<br>• `GET /api/attendance` & `POST /api/attendance` (daily roll)<br>• `POST /api/attendance/bulk` (quick-marking)<br>• `GET /api/children`, `POST /api/children`, `PUT /api/children/{id}`, `DELETE /api/children/{id}`            |
 
 ---
@@ -628,6 +712,11 @@ app.add_middleware(
 - [ ] **Zero-Observation Domain Score Reset:** Deleting all observations for a domain resets that domain's score to 1 and removes strengths/needs entries for that domain.
 - [ ] **Cascade Delete:** Deleting a child deletes related observations, attendance records, and activity logs.
 - [ ] **Dashboard Counts:** `activities_done` matches `SELECT COUNT(*) FROM observations WHERE is_baseline = 0`, and `domainDistribution` tallies only observed domains.
+- [ ] **AI Recommendation Status:** `GET /api/recommendations/status` returns configuration status and model without leaking API key.
+- [ ] **Deterministic Recommendation Fallback:** `POST /api/recommendations/personalized` returns valid recommendations with `fallback == True` when Groq is not configured or offline.
+- [ ] **Activity Completion Exclusion:** Activities present in recent trials are never returned as pending recommendations.
+- [ ] **Scaffolding Adaptation:** A prior trial outcome of `tried_needs_support` triggers scaffolding adaptations in teaching strategy.
+- [ ] **Step Count Validation:** `POST /api/activity-logs` enforces `completed_steps <= total_steps` when `total_steps > 0` (pending Bhakti's approval).
 
 ---
 

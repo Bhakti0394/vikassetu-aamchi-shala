@@ -409,3 +409,195 @@ def test_single_assessed_domain_level_3_provides_recommendation(client):
         rec = data["recommendations"][0]
         assert rec["domain"] == "alphabet"
         assert "creative extension" in rec["reason"].lower() or "mastery" in rec["reason"].lower()
+
+def test_two_distinct_recommendations_initially(client):
+    from conftest import TestingSessionLocal
+    db = TestingSessionLocal()
+    seed_recommendation_data(db)
+    db.close()
+
+    with patch("app.ai_recommendations.get_groq_api_key", return_value=None):
+        res = client.post(
+            "/api/recommendations/personalized",
+            json={"child_id": "rec-aarav", "limit_domains": 2}
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert len(data["recommendations"]) == 2
+        # Distinct activities
+        act_ids = [r["activity_id"] for r in data["recommendations"]]
+        assert len(set(act_ids)) == 2
+
+def test_tried_needs_support_excludes_activity_and_refills_slot(client):
+    from conftest import TestingSessionLocal
+    db = TestingSessionLocal()
+    seed_recommendation_data(db)
+    db.close()
+
+    # Complete rec-act-letter-sound with outcome tried_needs_support in client payload
+    payload = {
+        "child_id": "rec-aarav",
+        "limit_domains": 2,
+        "recent_trials": [
+            {
+                "activity_id": "rec-act-letter-sound",
+                "outcome": "tried_needs_support",
+                "note": "Child struggled with letter C",
+            }
+        ],
+    }
+
+    with patch("app.ai_recommendations.get_groq_api_key", return_value=None):
+        res = client.post("/api/recommendations/personalized", json=payload)
+        assert res.status_code == 200
+        data = res.json()
+        assert len(data["recommendations"]) == 2
+        act_ids = [r["activity_id"] for r in data["recommendations"]]
+        # rec-act-letter-sound MUST be excluded!
+        assert "rec-act-letter-sound" not in act_ids
+        # And exactly 2 distinct recommendations remain
+        assert len(set(act_ids)) == 2
+
+def test_offline_client_trial_excludes_before_backend_sync(client):
+    from conftest import TestingSessionLocal
+    db = TestingSessionLocal()
+    seed_recommendation_data(db)
+    db.close()
+
+    # Offline saved trial not yet in DB
+    payload = {
+        "child_id": "rec-aarav",
+        "limit_domains": 2,
+        "recent_trials": [
+            {
+                "activity_id": "rec-act-count-match",
+                "outcome": "tried_helped",
+                "note": "Saved locally in indexeddb offline",
+            }
+        ],
+    }
+
+    with patch("app.ai_recommendations.get_groq_api_key", return_value=None):
+        res = client.post("/api/recommendations/personalized", json=payload)
+        assert res.status_code == 200
+        data = res.json()
+        act_ids = [r["activity_id"] for r in data["recommendations"]]
+        # Immediately excluded even without DB record
+        assert "rec-act-count-match" not in act_ids
+
+def test_independent_recommendation_lists_between_children(client):
+    from conftest import TestingSessionLocal
+    db = TestingSessionLocal()
+    seed_recommendation_data(db)
+    db.close()
+
+    # Aarav completed rec-act-count-match
+    payload_aarav = {
+        "child_id": "rec-aarav",
+        "limit_domains": 2,
+        "recent_trials": [
+            {"activity_id": "rec-act-count-match", "outcome": "tried_helped"}
+        ],
+    }
+    # Anaya has NOT completed rec-act-count-match
+    payload_anaya = {
+        "child_id": "rec-anaya",
+        "limit_domains": 2,
+        "recent_trials": [],
+    }
+
+    with patch("app.ai_recommendations.get_groq_api_key", return_value=None):
+        res_aarav = client.post("/api/recommendations/personalized", json=payload_aarav)
+        res_anaya = client.post("/api/recommendations/personalized", json=payload_anaya)
+
+        assert res_aarav.status_code == 200
+        assert res_anaya.status_code == 200
+
+        aarav_acts = [r["activity_id"] for r in res_aarav.json()["recommendations"]]
+        anaya_acts = [r["activity_id"] for r in res_anaya.json()["recommendations"]]
+
+        # Aarav has it excluded
+        assert "rec-act-count-match" not in aarav_acts
+        # Anaya has numbers as weak domain and can still receive rec-act-count-match
+        assert "rec-act-count-match" in anaya_acts
+
+def test_not_tried_outcome_does_not_exclude_activity(client):
+    from conftest import TestingSessionLocal
+    db = TestingSessionLocal()
+    seed_recommendation_data(db)
+    db.close()
+
+    # Anaya has numbers as weak domain and has no prior tried logs in DB
+    payload = {
+        "child_id": "rec-anaya",
+        "limit_domains": 2,
+        "recent_trials": [
+            {"activity_id": "rec-act-count-match", "outcome": "not_tried"}
+        ],
+    }
+
+    with patch("app.ai_recommendations.get_groq_api_key", return_value=None):
+        res = client.post("/api/recommendations/personalized", json=payload)
+        assert res.status_code == 200
+        data = res.json()
+        act_ids = [r["activity_id"] for r in data["recommendations"]]
+        # not_tried must NOT exclude the activity
+        assert "rec-act-count-match" in act_ids
+
+def test_honest_count_when_fewer_than_two_eligible_activities_remain(client):
+    from conftest import TestingSessionLocal
+    db = TestingSessionLocal()
+    seed_recommendation_data(db)
+    db.close()
+
+    # Total activities in test DB: test-alphabet-match, rec-act-letter-sound, rec-act-alphabet-match, rec-act-count-match
+    # Complete 3 of them, so exactly 1 untried activity remains (rec-act-alphabet-match)
+    payload = {
+        "child_id": "rec-aarav",
+        "limit_domains": 2,
+        "recent_trials": [
+            {"activity_id": "rec-act-letter-sound", "outcome": "tried_helped"},
+            {"activity_id": "rec-act-count-match", "outcome": "tried_needs_support"},
+            {"activity_id": "test-alphabet-match", "outcome": "tried_helped"},
+        ],
+    }
+
+    with patch("app.ai_recommendations.get_groq_api_key", return_value=None):
+        res = client.post("/api/recommendations/personalized", json=payload)
+        assert res.status_code == 200
+        data = res.json()
+        recs = data["recommendations"]
+        # Exactly 1 untried remains (rec-act-alphabet-match), no duplicate should be created!
+        assert len(recs) == 1
+        assert recs[0]["activity_id"] == "rec-act-alphabet-match"
+
+def test_support_adaptation_strategy_when_tried_needs_support(client):
+    from conftest import TestingSessionLocal
+    db = TestingSessionLocal()
+    seed_recommendation_data(db)
+    db.close()
+
+    payload = {
+        "child_id": "rec-aarav",
+        "limit_domains": 1,
+        "recent_trials": [
+            {
+                "activity_id": "rec-act-letter-sound",
+                "outcome": "tried_needs_support",
+                "note": "Found letter C sounds hard",
+            }
+        ],
+    }
+
+    with patch("app.ai_recommendations.get_groq_api_key", return_value=None):
+        res = client.post("/api/recommendations/personalized", json=payload)
+        assert res.status_code == 200
+        data = res.json()
+        assert len(data["recommendations"]) == 1
+        rec = data["recommendations"][0]
+        # Must contain Support Adaptation strategy
+        assert "Support Adaptation" in rec["teaching_strategy"]
+        assert "micro-steps" in rec["teaching_strategy"]
+
+
+

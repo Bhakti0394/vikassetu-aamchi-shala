@@ -43,6 +43,7 @@ export type Recommendation = {
   hasExplicitScore?: boolean | undefined;
   secondaryActivity?: Activity | undefined;
   lastTrial?: { outcome: string; note?: string | undefined; date?: string | undefined } | undefined;
+  scaffoldingNote?: string | undefined;
 };
 
 /**
@@ -188,6 +189,7 @@ function buildPedagogicalReason(
   lastTrialOutcome?: string,
   isUnobserved = false,
   hasExplicitScore = true,
+  priorActivityName?: string,
 ): string {
   const d = domainOf(domainId);
   const domainName = d ? d.name : domainId;
@@ -216,7 +218,9 @@ function buildPedagogicalReason(
   }
 
   if (lastTrialOutcome === "tried_needs_support") {
-    action += ` Focusing on guided repetition with smaller steps and concrete materials.`;
+    action += priorActivityName
+      ? ` Scaffolding adaptation: Following support needed in ${priorActivityName}, focusing on guided repetition with smaller steps and concrete materials.`
+      : ` Focusing on guided repetition with smaller steps and concrete materials.`;
   } else if (lastTrialOutcome === "tried_helped") {
     action += ` Advancing learning to reinforce and extend demonstrated skills.`;
   } else if (isUnobserved) {
@@ -245,6 +249,14 @@ export function recommendFor(
     return [];
   }
 
+  // Identify all completed activities for this child (both helped and needs-support trials)
+  const completedActivityIds = new Set<string>(
+    childLogs
+      .filter((l) => l.outcome === "tried_helped" || l.outcome === "tried_needs_support")
+      .map((l) => l.activityId)
+      .filter(Boolean),
+  );
+
   // 1. Weakest assessed domains (score 1 or 2)
   const targetDomains: {
     domain: DomainId;
@@ -260,18 +272,18 @@ export function recommendFor(
     hasExplicitScore: w.hasExplicitScore,
   }));
 
-  // 2. If all assessed domains are score 3 (e.g. Yash with Level 3, or child with all 5 at Level 3):
-  // Provide Level 3 extension and leadership activities in observed domains
-  if (targetDomains.length === 0 && analysis.observedDomains.length > 0) {
+  // 2. Add remaining assessed domains (e.g. score 3 extension or when fewer than 2 weak domains)
+  if (analysis.observedDomains.length > 0) {
     for (const obsId of analysis.observedDomains) {
-      if (targetDomains.length >= 2) break;
-      targetDomains.push({
-        domain: obsId,
-        score: 3,
-        isUnobserved: false,
-        isEarly: analysis.confidence[obsId] === "early",
-        hasExplicitScore: analysis.explicitScores[obsId] !== undefined,
-      });
+      if (!targetDomains.some((t) => t.domain === obsId)) {
+        targetDomains.push({
+          domain: obsId,
+          score: (analysis.latestScores[obsId] ?? 3) as Score,
+          isUnobserved: false,
+          isEarly: analysis.confidence[obsId] === "early",
+          hasExplicitScore: analysis.explicitScores[obsId] !== undefined,
+        });
+      }
     }
   }
 
@@ -294,17 +306,37 @@ export function recommendFor(
   }
 
   const recommendations: Recommendation[] = [];
+  const chosenActivityIds = new Set<string>();
 
-  for (const target of targetDomains.slice(0, 2)) {
+  for (const target of targetDomains) {
+    if (recommendations.length >= 2) break;
+
     const domainId = target.domain;
     const score = target.score;
 
-    // Filter candidate activities matching domain and level
-    const candidates = ACTIVITIES.filter(
-      (a) => a.domain === domainId && a.forLevel.includes(score),
+    // Filter candidate activities matching domain and level, excluding completed and already chosen
+    let candidates = ACTIVITIES.filter(
+      (a) =>
+        a.domain === domainId &&
+        a.forLevel.includes(score) &&
+        !completedActivityIds.has(a.id) &&
+        !chosenActivityIds.has(a.id),
     );
 
-    if (candidates.length === 0) continue;
+    // If no untried candidate matches the exact score in this domain, check other untried candidates in this domain
+    if (candidates.length === 0) {
+      candidates = ACTIVITIES.filter(
+        (a) =>
+          a.domain === domainId &&
+          !completedActivityIds.has(a.id) &&
+          !chosenActivityIds.has(a.id),
+      );
+    }
+
+    // If all candidates in this domain are completed, check if all target domains are exhausted before allowing repetition
+    if (candidates.length === 0) {
+      continue;
+    }
 
     const childHadSupportNeed = childLogs.some(
       (l) =>
@@ -312,52 +344,46 @@ export function recommendFor(
         ACTIVITIES.find((act) => act.id === l.activityId)?.domain === domainId,
     );
 
-    // Compute activity trial history stats for smart rotation
-    const candidateStats = candidates.map((cand) => {
-      const candLogs = childLogs.filter((l) => l.activityId === cand.id);
-      const lastTrial = candLogs.sort(
-        (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
-      )[0];
-      const helped = candLogs.some((l) => l.outcome === "tried_helped");
-      const needsSupport = lastTrial?.outcome === "tried_needs_support";
-      return {
-        cand,
-        lastTrial,
-        helped,
-        needsSupport,
-        trialCount: candLogs.length,
-      };
-    });
-
-    // Smart Rotation & Pedagogical Difficulty Priority:
-    // 1. Separate candidates that have already helped from unmastered candidates
-    const unmastered = candidateStats.filter((s) => !s.helped);
-    const pool = unmastered.length > 0 ? unmastered : candidateStats;
-
-    // 2. Sort pool:
+    // Sort candidates:
     // - If child had support needs in domain, prioritize "Easy" difficulty over "Medium"
-    // - Unmastered candidates take precedence over already-helped activities
-    const sortedStats = [...pool].sort((a, b) => {
-      if (childHadSupportNeed && a.cand.difficulty !== b.cand.difficulty) {
-        return a.cand.difficulty === "Easy" ? -1 : 1;
+    // - Fewer completed trials first
+    const sortedCandidates = [...candidates].sort((a, b) => {
+      if (childHadSupportNeed && a.difficulty !== b.difficulty) {
+        return a.difficulty === "Easy" ? -1 : 1;
       }
-      return 0;
+      const countA = childLogs.filter((l) => l.activityId === a.id && (l.outcome === "tried_helped" || l.outcome === "tried_needs_support")).length;
+      const countB = childLogs.filter((l) => l.activityId === b.id && (l.outcome === "tried_helped" || l.outcome === "tried_needs_support")).length;
+      return countA - countB;
     });
 
-    const primaryStat = sortedStats[0];
-    if (!primaryStat) continue;
-    const primaryActivity = primaryStat.cand;
+    const primaryActivity = sortedCandidates[0];
+    if (!primaryActivity) continue;
 
-    // Find a secondary suggestion if available from the remaining pool
-    const otherCandidates = pool.filter((s) => s.cand.id !== primaryActivity.id).map((s) => s.cand);
-    const secondaryActivity = otherCandidates.length > 0 ? otherCandidates[0] : undefined;
+    chosenActivityIds.add(primaryActivity.id);
 
-    // Find last trial info for primary activity if previously attempted
-    const pastTrial = childLogs
+    // Secondary suggestion if available from other domain candidates
+    const otherDomainCandidates = ACTIVITIES.filter(
+      (a) => a.domain === domainId && a.id !== primaryActivity.id && !chosenActivityIds.has(a.id),
+    );
+    const secondaryActivity = otherDomainCandidates.length > 0 ? otherDomainCandidates[0] : undefined;
+
+    // Past trial info: check for primary activity first, or fallback to the domain's most recent trial
+    const actPastTrial = childLogs
       .filter((l) => l.activityId === primaryActivity.id)
       .sort(
         (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
       )[0];
+
+    const domainPastTrial = childLogs
+      .filter((l) => {
+        const act = ACTIVITIES.find((a) => a.id === l.activityId);
+        return act?.domain === domainId;
+      })
+      .sort(
+        (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
+      )[0];
+
+    const pastTrial = actPastTrial || domainPastTrial;
 
     const lastTrial = pastTrial
       ? {
@@ -366,6 +392,14 @@ export function recommendFor(
           date: pastTrial.createdAt ?? undefined,
         }
       : undefined;
+
+    const priorAct = pastTrial ? ACTIVITIES.find((a) => a.id === pastTrial.activityId) : undefined;
+    const priorName = priorAct?.name;
+
+    const scaffoldingNote =
+      lastTrial?.outcome === "tried_needs_support"
+        ? `Support Adaptation: Following support needed in ${priorName || "previous practice"}, introduce ${primaryActivity.name} with smaller micro-steps, physical manipulatives, and 1-on-1 modeling.`
+        : undefined;
 
     const evidenceList = analysis.evidence[domainId] || [];
     const reason = buildPedagogicalReason(
@@ -377,6 +411,7 @@ export function recommendFor(
       lastTrial?.outcome,
       target.isUnobserved,
       target.hasExplicitScore,
+      priorName,
     );
 
     recommendations.push({
@@ -390,7 +425,67 @@ export function recommendFor(
       hasExplicitScore: target.hasExplicitScore,
       secondaryActivity,
       lastTrial,
+      scaffoldingNote,
     });
+  }
+
+  // If all candidate target domains had 0 untried candidates (e.g. all activities completed),
+  // allow an explicit repetition of a previously tried activity rather than returning an empty list
+  if (recommendations.length === 0 && targetDomains.length > 0) {
+    const firstTarget = targetDomains[0]!;
+    const domainId = firstTarget.domain;
+    const score = firstTarget.score;
+    const domainActivities = ACTIVITIES.filter((a) => a.domain === domainId);
+
+    if (domainActivities.length > 0) {
+      // Pick activity with fewest trials
+      const sorted = [...domainActivities].sort((a, b) => {
+        const countA = childLogs.filter((l) => l.activityId === a.id).length;
+        const countB = childLogs.filter((l) => l.activityId === b.id).length;
+        return countA - countB;
+      });
+
+      const primaryActivity = sorted[0]!;
+      const secondaryActivity = sorted[1];
+      const pastTrial = childLogs
+        .filter((l) => l.activityId === primaryActivity.id)
+        .sort(
+          (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
+        )[0];
+
+      const lastTrial = pastTrial
+        ? {
+            outcome: pastTrial.outcome,
+            note: pastTrial.note ?? undefined,
+            date: pastTrial.createdAt ?? undefined,
+          }
+        : undefined;
+
+      const evidenceList = analysis.evidence[domainId] || [];
+      const reason = buildPedagogicalReason(
+        child.name,
+        domainId,
+        score,
+        primaryActivity,
+        evidenceList,
+        lastTrial?.outcome,
+        firstTarget.isUnobserved,
+        firstTarget.hasExplicitScore,
+      );
+
+      recommendations.push({
+        child,
+        domain: domainId,
+        activity: primaryActivity,
+        level: score,
+        reason,
+        evidence: evidenceList,
+        isEarlySuggestion: firstTarget.isEarly,
+        hasExplicitScore: firstTarget.hasExplicitScore,
+        secondaryActivity,
+        lastTrial,
+      });
+    }
   }
 
   return recommendations;

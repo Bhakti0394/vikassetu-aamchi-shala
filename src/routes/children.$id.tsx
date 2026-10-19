@@ -11,6 +11,7 @@ import {
   Lightbulb,
   Zap,
   Target,
+  Compass,
 } from "lucide-react";
 import { useStore, isPresentToday, attendancePct } from "@/lib/store";
 import { ACTIVITIES, activityOf, domainOf, toneBg, DOMAINS, SEED_CHILDREN, type DomainId, type Score } from "@/lib/data";
@@ -21,6 +22,9 @@ import {
   dismissPendingTrial,
   getStorageStatus,
   registerAutoSyncOnOnline,
+  registerTrialChangeListener,
+  isCompletedTrial,
+  summarizeChildPracticeHistory,
   type ChildActivityHistoryItem,
 } from "@/lib/activityLogs";
 import {
@@ -87,22 +91,38 @@ function Profile() {
     setTrialsError(null);
     try {
       const res = await fetchChildActivityHistory(ch.id);
-      setTrials(res.all);
+      if (isMountedRef.current) {
+        setTrials(res.all);
+      }
     } catch {
-      setTrials([]);
-      setTrialsError("Could not retrieve activity trials from server. Pending offline records remain safe.");
+      if (isMountedRef.current) {
+        setTrials([]);
+        setTrialsError("Could not retrieve activity trials from server. Pending offline records remain safe.");
+      }
     } finally {
-      setIsLoadingTrials(false);
+      if (isMountedRef.current) {
+        setIsLoadingTrials(false);
+      }
     }
   };
 
   useEffect(() => {
     if (!ch?.id) return;
+    setTrials([]);
+    setAiRecs([]);
     loadTrials();
-    const unsubscribe = registerAutoSyncOnOnline(() => {
+    const unsubOnline = registerAutoSyncOnOnline(() => {
       loadTrials();
     });
-    return unsubscribe;
+    const unsubTrial = registerTrialChangeListener((trialChildId) => {
+      if (trialChildId === ch.id) {
+        loadTrials();
+      }
+    });
+    return () => {
+      unsubOnline();
+      unsubTrial();
+    };
   }, [ch?.id]);
 
   const handleSync = async () => {
@@ -151,6 +171,18 @@ function Profile() {
       </div>
     );
 
+  const completedActivityIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const t of trials) {
+      const outcome = t.type === "confirmed" ? t.record.outcome : t.queued.outcome;
+      if (isCompletedTrial(outcome)) {
+        const actId = t.type === "confirmed" ? t.record.activityId : t.queued.activityId;
+        if (actId) ids.add(actId);
+      }
+    }
+    return ids;
+  }, [trials]);
+
   const activitySummaries: ActivityLogSummary[] = trials.map((t) => {
     if (t.type === "confirmed") {
       return {
@@ -182,14 +214,18 @@ function Profile() {
   const hasQueued = trials.some((t) => t.type === "queued");
 
   // Fetch AI personalized recommendations for child profile
-  const [aiRecs, setAiRecs] = useState<Record<string, PersonalizedPedagogy>>({});
+  const [aiRecs, setAiRecs] = useState<PersonalizedPedagogy[]>([]);
 
   useEffect(() => {
     if (!ch?.id || isLoadingTrials) return;
     const obsDates = observations
       .filter((o) => o.childId === ch.id)
       .map((o) => o.date);
-    const fingerprint = createEvidenceFingerprint(obsDates, trials.length);
+    const fingerprint = createEvidenceFingerprint(
+      obsDates,
+      trials.length,
+      Array.from(completedActivityIds),
+    );
 
     fetchPersonalizedRecommendations(ch.id, fingerprint, {
       child: ch,
@@ -197,67 +233,110 @@ function Profile() {
       recentTrials: activitySummaries,
     }).then((res) => {
       if (!isMountedRef.current || !res || !res.recommendations) return;
-      const map: Record<string, PersonalizedPedagogy> = {};
-      for (const item of res.recommendations) {
-        map[item.activityId] = item;
-        map[item.domain] = item;
-      }
-      setAiRecs(map);
+      setAiRecs(res.recommendations);
     });
-  }, [ch?.id, isLoadingTrials, observations.length, trials.length]);
+  }, [ch?.id, isLoadingTrials, observations.length, trials.length, completedActivityIds]);
 
-  // Combine recommendations so AI-generated plans take priority and are not masked
+  // Combine recommendations so AI-generated plans take priority, completed activities are strictly excluded,
+  // and exactly 2 distinct active recommendations are maintained whenever eligible activities exist.
   const displayCards = useMemo(() => {
-    const aiList = Object.values(aiRecs);
-    // Deduplicate unique AI recommendation items by activityId
-    const uniqueAi = Array.from(new Map(aiList.map((item) => [item.activityId, item])).values());
+    const untriedAi: PersonalizedPedagogy[] = [];
+    const chosenActIds = new Set<string>();
 
-    if (uniqueAi.length > 0) {
-      return uniqueAi.map((aiItem) => {
-        const act =
-          ACTIVITIES.find((a) => a.id === aiItem.activityId) ||
-          ACTIVITIES.find((a) => a.domain === aiItem.domain) || {
-            id: aiItem.activityId,
-            domain: aiItem.domain as DomainId,
-            name: aiItem.title,
-            emoji: "✨",
-            level: 1 as Score,
-            forLevel: [1, 2] as Score[],
-            difficulty: "Easy" as const,
-            minutes: 10,
-            description: aiItem.reason,
-            steps: aiItem.teacherSteps,
-            skills: aiItem.focusSkills,
-          };
-        const matchingRec = recs.find(
-          (r) => r.activity.id === act.id || r.domain === aiItem.domain,
-        );
-        return {
-          key: `ai-${aiItem.domain}-${aiItem.activityId}`,
-          domain: (act.domain || aiItem.domain) as DomainId,
-          activity: act,
-          level: matchingRec?.level ?? 1,
-          reason: aiItem.reason,
-          aiItem,
+    for (const item of aiRecs) {
+      if (!item.activityId) continue;
+      if (completedActivityIds.has(item.activityId)) continue;
+      if (chosenActIds.has(item.activityId)) continue;
+      chosenActIds.add(item.activityId);
+      untriedAi.push(item);
+      if (untriedAi.length >= 2) break;
+    }
+
+    const cards: {
+      key: string;
+      domain: DomainId;
+      activity: (typeof ACTIVITIES)[0];
+      level: Score;
+      reason: string;
+      aiItem?: PersonalizedPedagogy | undefined;
+      scaffoldingNote?: string | undefined;
+    }[] = [];
+
+    // 1. Convert valid untried AI recommendations to cards
+    for (const aiItem of untriedAi) {
+      const act =
+        ACTIVITIES.find((a) => a.id === aiItem.activityId) ||
+        ACTIVITIES.find((a) => a.domain === aiItem.domain) || {
+          id: aiItem.activityId,
+          domain: aiItem.domain as DomainId,
+          name: aiItem.title,
+          emoji: "✨",
+          level: 1 as Score,
+          forLevel: [1, 2] as Score[],
+          difficulty: "Easy" as const,
+          minutes: 10,
+          description: aiItem.reason,
+          steps: aiItem.teacherSteps,
+          skills: aiItem.focusSkills,
         };
+      const matchingRec = recs.find(
+        (r) => r.activity.id === act.id || r.domain === aiItem.domain,
+      );
+      cards.push({
+        key: `ai-${aiItem.domain}-${aiItem.activityId}`,
+        domain: (act.domain || aiItem.domain) as DomainId,
+        activity: act,
+        level: matchingRec?.level ?? 1,
+        reason: aiItem.reason,
+        aiItem,
+        scaffoldingNote: aiItem.nextStepIfSupportNeeded || matchingRec?.scaffoldingNote,
       });
     }
 
-    return recs.map((r) => {
-      const aiItem = aiRecs[r.activity.id] || aiRecs[r.domain];
-      const activeActivity =
-        (aiItem?.activityId && ACTIVITIES.find((a) => a.id === aiItem.activityId)) ||
-        r.activity;
-      return {
-        key: `rec-${r.domain}`,
-        domain: (activeActivity.domain || r.domain) as DomainId,
-        activity: activeActivity,
-        level: r.level,
-        reason: aiItem?.reason || r.reason,
-        aiItem,
-      };
-    });
-  }, [recs, aiRecs]);
+    // 2. If fewer than 2 cards, refill vacant slot(s) from deterministic recs (recommendFor)
+    if (cards.length < 2) {
+      for (const r of recs) {
+        if (cards.length >= 2) break;
+        if (completedActivityIds.has(r.activity.id)) continue;
+        if (chosenActIds.has(r.activity.id)) continue;
+
+        chosenActIds.add(r.activity.id);
+        cards.push({
+          key: `rec-${r.domain}-${r.activity.id}`,
+          domain: r.activity.domain as DomainId,
+          activity: r.activity,
+          level: r.level,
+          reason: r.reason,
+          scaffoldingNote: r.scaffoldingNote,
+        });
+      }
+    }
+
+    // 3. If still fewer than 2 cards, refill from remaining untried activities across the catalog
+    if (cards.length < 2) {
+      for (const act of ACTIVITIES) {
+        if (cards.length >= 2) break;
+        if (completedActivityIds.has(act.id)) continue;
+        if (chosenActIds.has(act.id)) continue;
+
+        chosenActIds.add(act.id);
+        cards.push({
+          key: `cat-${act.domain}-${act.id}`,
+          domain: act.domain,
+          activity: act,
+          level: (act.forLevel[0] || 1) as Score,
+          reason: `${ch.name} can explore ${act.name} to build hands-on skills in ${domainOf(act.domain)?.name || act.domain}.`,
+        });
+      }
+    }
+
+    return cards;
+  }, [aiRecs, recs, completedActivityIds, ch.name]);
+
+  const practiceSummary = useMemo(
+    () => summarizeChildPracticeHistory(trials, (id) => activityOf(id)?.domain),
+    [trials],
+  );
 
   return (
     <div className="fade-up space-y-6">
@@ -466,6 +545,18 @@ function Profile() {
                         </p>
                       </div>
                     )}
+
+                    {/* Scaffolding Adaptation */}
+                    {(card.scaffoldingNote || aiItem?.nextStepIfSupportNeeded) && (
+                      <div className="mt-2.5 rounded-xl bg-amber-soft/40 p-2 text-xs border border-amber/30 text-amber-900 dark:text-amber-100">
+                        <p className="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1 text-[11px] uppercase tracking-wide">
+                          <Compass className="h-3.5 w-3.5" /> Scaffolding Adaptation:
+                        </p>
+                        <p className="mt-0.5 leading-snug">
+                          {card.scaffoldingNote || aiItem?.nextStepIfSupportNeeded}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-border/40">
@@ -527,7 +618,48 @@ function Profile() {
             </p>
           </div>
         ) : (
-          <ul className="space-y-3 stagger">
+          <div className="space-y-4">
+            {/* Domain Practice Reflection Summary */}
+            <div className="rounded-2xl border border-border/80 bg-background/70 p-4 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-bold text-foreground">Practice Summary:</span>
+                  <span className="rounded-lg bg-muted px-2 py-0.5 font-bold text-muted-foreground">
+                    {practiceSummary.totalTrials} {practiceSummary.totalTrials === 1 ? "trial" : "trials"}
+                  </span>
+                  <span className="rounded-lg bg-teal-soft px-2 py-0.5 font-bold text-teal">
+                    ✓ {practiceSummary.helpedCount} Helped
+                  </span>
+                  {practiceSummary.needsSupportCount > 0 && (
+                    <span className="rounded-lg bg-amber-soft px-2 py-0.5 font-bold text-amber-700 dark:text-amber-400">
+                      ⚠ {practiceSummary.needsSupportCount} Needed Support
+                    </span>
+                  )}
+                </div>
+
+                {Object.keys(practiceSummary.domainCounts).length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-muted-foreground text-[11px] font-semibold">Active Areas:</span>
+                    {Object.entries(practiceSummary.domainCounts).map(([domId, count]) => {
+                      const dom = domainOf(domId as DomainId);
+                      return (
+                        <span
+                          key={domId}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-bold",
+                            dom ? toneBg[dom.tone] : "bg-muted text-foreground",
+                          )}
+                        >
+                          {dom?.emoji} {dom?.name || domId} ({count})
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <ul className="space-y-3 stagger">
             {trials.map((item) => {
               const isQueued = item.type === "queued";
               const key = item.type === "queued" ? item.queued.queueId : `rec-${item.record.id}`;
@@ -663,7 +795,8 @@ function Profile() {
               );
             })}
           </ul>
-        )}
+        </div>
+      )}
       </section>
 
       <section className="card-soft p-6">

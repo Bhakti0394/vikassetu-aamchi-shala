@@ -106,8 +106,16 @@ export function invalidateRecommendationCache(childId?: string): void {
   }
 }
 
-export function createEvidenceFingerprint(dates: string[], logCount: number): string {
-  return `${[...dates].sort().join(",")}_logs:${logCount}`;
+export function createEvidenceFingerprint(
+  dates: string[],
+  logCount: number,
+  completedActivityIds?: string[],
+): string {
+  const completedPart =
+    completedActivityIds && completedActivityIds.length > 0
+      ? `_completed:${[...completedActivityIds].sort().join(",")}`
+      : "";
+  return `${[...dates].sort().join(",")}_logs:${logCount}${completedPart}`;
 }
 
 /**
@@ -170,9 +178,26 @@ export async function fetchPersonalizedRecommendations(
   const cacheKey = `${childId}:${cacheKeyFingerprint || "default"}`;
   const cached = getCachedRec(cacheKey);
 
-  // Return cached result if valid (within 10 minutes)
+  const completedIds = new Set(
+    (context?.recentTrials || [])
+      .filter((t) => t.outcome === "tried_helped" || t.outcome === "tried_needs_support")
+      .map((t) => t.activityId)
+      .filter(Boolean),
+  );
+
+  // Return cached result only if valid (within 10 minutes) and contains NO completed activities
   if (cached) {
-    return cached;
+    const hasCompleted = cached.recommendations.some((r) => completedIds.has(r.activityId));
+    if (!hasCompleted) {
+      return cached;
+    }
+    // Stale cache containing a completed activity: remove stale cache and generate replacement
+    recommendationCache.delete(cacheKey);
+    if (typeof window !== "undefined" && typeof window.sessionStorage !== "undefined") {
+      try {
+        sessionStorage.removeItem(`${CACHE_STORAGE_KEY}_${cacheKey}`);
+      } catch {}
+    }
   }
 
   // Deduplicate in-flight requests for the same child and fingerprint
@@ -265,9 +290,11 @@ export async function fetchPersonalizedRecommendations(
         isAiGenerated: Boolean(r["is_ai_generated"] ?? r["isAiGenerated"] ?? true),
       }));
 
+      const cleanRecs = mappedRecs.filter((r) => !completedIds.has(r.activityId));
+
       const result: PersonalizedRecommendationResponse = {
         childId: String(rawData["child_id"] || childId),
-        recommendations: mappedRecs,
+        recommendations: cleanRecs,
         generatedAt: String(rawData["generated_at"] || new Date().toISOString()),
         modelUsed: rawData["model_used"] ? String(rawData["model_used"]) : undefined,
         fallback: Boolean(rawData["fallback"]),

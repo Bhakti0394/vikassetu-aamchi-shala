@@ -107,15 +107,18 @@ def build_deterministic_item(
         ]
 
     # Teaching strategy based on support needs
-    had_support_need = any(
-        log.get("outcome") == "tried_needs_support" and log.get("activity_id") == act_id
-        for log in recent_outcomes
-    )
+    support_logs = [
+        log for log in recent_outcomes
+        if log.get("outcome") == "tried_needs_support"
+    ]
 
-    if had_support_need:
+    if support_logs:
+        prev_note = support_logs[0].get("note")
+        note_snippet = f' (prior note: "{prev_note}")' if prev_note else ""
         strategy = (
-            f"Break {activity_name} into smaller micro-steps. Offer immediate positive modeling "
-            f"and reduce choice complexity to build early confidence."
+            f"Support Adaptation: Since the child needed support in earlier practice{note_snippet}, "
+            f"break {activity_name} into concrete micro-steps with hands-on manipulatives, immediate positive modeling, "
+            f"and reduced choice complexity to build early confidence."
         )
     else:
         strategy = (
@@ -220,7 +223,7 @@ async def generate_ai_recommendation(
         "3. Provide concrete, actionable teaching steps for the teacher.\n"
         "4. Provide an observable and measurable success criterion (how the teacher knows the child succeeded).\n"
         "5. Provide actionable next steps for both outcomes: (a) if the child succeeds, and (b) if the child needs support.\n"
-        "6. ACTIVITY ROTATION: If the child previously completed an activity with outcome 'tried_helped', prefer recommending a different eligible candidate from the list to broaden learning. If 'tried_needs_support', prioritize scaffolding or an easier alternative.\n"
+        "6. ACTIVITY ROTATION & SCAFFOLDING: Never recommend an activity that the child has already completed. Choose exclusively from the provided candidate activities list. If the child previously needed support (tried_needs_support), explicitly tailor the 'teaching_strategy' and 'next_step_if_support_needed' with scaffolded adaptations (e.g. fewer objects, concrete tactile aids, paired modeling) directly addressing that prior struggle.\n"
         "7. Return ONLY a valid JSON object matching the requested schema.\n"
     )
 
