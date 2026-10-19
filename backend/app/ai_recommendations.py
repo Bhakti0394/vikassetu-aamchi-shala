@@ -166,6 +166,7 @@ async def generate_ai_recommendation(
     child_needs: List[str],
     recent_logs: List[Dict[str, Any]],
     api_key_override: Optional[str] = None,
+    child_age: Optional[float] = 4.0,
 ) -> RecommendationPedagogy:
     """
     Calls Groq to generate deeply personalized, observation-driven learning guidance.
@@ -184,6 +185,7 @@ async def generate_ai_recommendation(
 
     # Anonymized child learning profile (NO child ID, NO names, NO personal PII sent to Groq)
     child_context = {
+        "age_years": child_age or 4.0,
         "learning_domain": domain,
         "current_level": f"Level {score}/3",
         "demonstrated_strengths": child_strengths,
@@ -216,11 +218,11 @@ async def generate_ai_recommendation(
 
     system_prompt = (
         "You are an expert early childhood pedagogical specialist for the VikasSetu preschool learning platform.\n"
-        "Your task is to analyze the child's observational evidence and recommend the single most suitable activity from the candidate activities list.\n\n"
+        "Your task is to analyze the child's age, developmental needs, demonstrated strengths, and observational evidence, and recommend the single most suitable activity from the candidate activities list.\n\n"
         "MANDATORY RULES:\n"
         "1. 'activity_id' MUST EXACTLY match one of the candidate activity IDs provided. Never invent or alter activity IDs.\n"
-        "2. Ground the recommendation in real observations. Differentiate what the child already knows/demonstrates from what requires support.\n"
-        "3. Provide concrete, actionable teaching steps for the teacher.\n"
+        "2. Ground the recommendation in real observations and learning needs. Match the child's age and specific developmental focus areas with the candidate activity that best addresses them.\n"
+        "3. Provide concrete, actionable teaching steps for the teacher using simple, everyday English.\n"
         "4. Provide an observable and measurable success criterion (how the teacher knows the child succeeded).\n"
         "5. Provide actionable next steps for both outcomes: (a) if the child succeeds, and (b) if the child needs support.\n"
         "6. ACTIVITY ROTATION & SCAFFOLDING: Never recommend an activity that the child has already completed. Choose exclusively from the provided candidate activities list. If the child previously needed support (tried_needs_support), explicitly tailor the 'teaching_strategy' and 'next_step_if_support_needed' with scaffolded adaptations (e.g. fewer objects, concrete tactile aids, paired modeling) directly addressing that prior struggle.\n"

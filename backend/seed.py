@@ -20,7 +20,7 @@ def run_seed(reset: bool = False):
             print(f"Database already contains {existing_children} children. Use --reset to re-seed.")
             return
 
-        print("Seeding activities (11)...")
+        print("Seeding activities (21)...")
         for act in ACTIVITIES:
             db.add(Activity(
                 id=act["id"],

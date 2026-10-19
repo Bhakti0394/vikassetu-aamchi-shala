@@ -599,5 +599,234 @@ def test_support_adaptation_strategy_when_tried_needs_support(client):
         assert "Support Adaptation" in rec["teaching_strategy"]
         assert "micro-steps" in rec["teaching_strategy"]
 
+def test_new_activity_number_hopscotch_recommended_for_counting_beyond_5(client):
+    from conftest import TestingSessionLocal
+    db = TestingSessionLocal()
+    seed_recommendation_data(db)
+
+    # Seed number-hopscotch if not present
+    hopscotch = db.query(Activity).filter(Activity.id == "number-hopscotch").first()
+    if not hopscotch:
+        hopscotch = Activity(
+            id="number-hopscotch",
+            name="Jump and Learn Numbers",
+            domain="numbers",
+            difficulty="Medium",
+            minutes=15,
+            emoji="🔢",
+            skills=["Number recognition 1-10", "Counting forward", "Gross motor balance"],
+            steps=["Draw hopscotch squares", "Call out number", "Child jumps to number"],
+            for_level=[1, 2],
+        )
+        db.add(hopscotch)
+
+    # Child aged 5.5 working on numbers domain with explicit need 'Counting beyond 5'
+    anaya_5 = db.query(Child).filter(Child.id == "child-anaya-5").first()
+    if not anaya_5:
+        anaya_5 = Child(
+            id="child-anaya-5",
+            name="Anaya",
+            age=5.5,
+            avatar="👧🏽",
+            tone="coral",
+            scores={"numbers": 2},
+            strengths=["Observation", "Pattern recognition"],
+            needs=["Counting beyond 5", "Turn-taking"],
+        )
+        db.add(anaya_5)
+
+    obs = db.query(Observation).filter(Observation.id == "obs-anaya-5-num").first()
+    if not obs:
+        obs = Observation(
+            id="obs-anaya-5-num",
+            child_id="child-anaya-5",
+            domain="numbers",
+            activity_id="rec-act-count-match",
+            score=2,
+            note="Counts comfortably to 5, ready for numbers up to 10",
+            date="2026-10-19T10:00:00Z",
+            is_baseline=False,
+        )
+        db.add(obs)
+    db.commit()
+    db.close()
+
+    payload = {
+        "child_id": "child-anaya-5",
+        "limit_domains": 1,
+    }
+
+    with patch("app.ai_recommendations.get_groq_api_key", return_value=None):
+        res = client.post("/api/recommendations/personalized", json=payload)
+        assert res.status_code == 200
+        data = res.json()
+        assert len(data["recommendations"]) == 1
+        rec = data["recommendations"][0]
+        # Should recommend Jump and Learn Numbers (number-hopscotch) over count-match
+        assert rec["activity_id"] == "number-hopscotch"
+
+def test_new_activity_freeze_dance_recommended_for_movement_needs(client):
+    from conftest import TestingSessionLocal
+    db = TestingSessionLocal()
+    seed_recommendation_data(db)
+
+    # Seed freeze-and-feel-dance and an alternative stories activity
+    freeze_dance = db.query(Activity).filter(Activity.id == "freeze-and-feel-dance").first()
+    if not freeze_dance:
+        freeze_dance = Activity(
+            id="freeze-and-feel-dance",
+            name="Dance and Freeze",
+            domain="stories",
+            difficulty="Easy",
+            minutes=10,
+            emoji="💃",
+            skills=["Emotional expression", "Gross motor control", "Impulse regulation"],
+            steps=["Play music and dance", "Pause music and freeze", "Name the feeling"],
+            for_level=[1, 2],
+        )
+        db.add(freeze_dance)
+
+    puppet_story = db.query(Activity).filter(Activity.id == "rec-act-puppet-story").first()
+    if not puppet_story:
+        puppet_story = Activity(
+            id="rec-act-puppet-story",
+            name="Puppet Story Time",
+            domain="stories",
+            difficulty="Medium",
+            minutes=15,
+            emoji="🎭",
+            skills=["Listening", "Vocabulary"],
+            steps=["Hold puppets", "Tell simple story", "Ask questions"],
+            for_level=[1, 2],
+        )
+        db.add(puppet_story)
+
+    rohan = db.query(Child).filter(Child.id == "child-rohan-dance").first()
+    if not rohan:
+        rohan = Child(
+            id="child-rohan-dance",
+            name="Rohan",
+            age=4.0,
+            avatar="👦🏽",
+            tone="sun",
+            scores={"stories": 1},
+            strengths=["High energy", "Loves outdoor play"],
+            needs=["Sitting still for stories", "Impulse control"],
+        )
+        db.add(rohan)
+
+    obs = db.query(Observation).filter(Observation.id == "obs-rohan-dance").first()
+    if not obs:
+        obs = Observation(
+            id="obs-rohan-dance",
+            child_id="child-rohan-dance",
+            domain="stories",
+            activity_id="rec-act-puppet-story",
+            score=1,
+            note="Very active; expresses feelings best when moving",
+            date="2026-10-19T10:00:00Z",
+            is_baseline=False,
+        )
+        db.add(obs)
+    db.commit()
+    db.close()
+
+    payload = {
+        "child_id": "child-rohan-dance",
+        "limit_domains": 1,
+    }
+
+    with patch("app.ai_recommendations.get_groq_api_key", return_value=None):
+        res = client.post("/api/recommendations/personalized", json=payload)
+        assert res.status_code == 200
+        data = res.json()
+        assert len(data["recommendations"]) == 1
+        rec = data["recommendations"][0]
+        # Should recommend Dance and Freeze (freeze-and-feel-dance)
+        assert rec["activity_id"] == "freeze-and-feel-dance"
+
+def test_unsuitable_activity_bridge_builders_excluded_for_level_1(client):
+    from conftest import TestingSessionLocal
+    db = TestingSessionLocal()
+    seed_recommendation_data(db)
+
+    # Seed bridge-builders (for level 2, 3) and an easy level 1 art activity
+    bridge = db.query(Activity).filter(Activity.id == "bridge-builders").first()
+    if not bridge:
+        bridge = Activity(
+            id="bridge-builders",
+            name="Build a Bridge",
+            domain="art",
+            difficulty="Medium",
+            minutes=20,
+            emoji="🌉",
+            skills=["Spatial reasoning", "Problem-solving", "Fine motor control"],
+            steps=["Gather recycled materials", "Design bridge", "Test bridge stability"],
+            for_level=[2, 3],
+        )
+        db.add(bridge)
+
+    easy_art = db.query(Activity).filter(Activity.id == "rec-act-finger-paint").first()
+    if not easy_art:
+        easy_art = Activity(
+            id="rec-act-finger-paint",
+            name="Finger Paint Fun",
+            domain="art",
+            difficulty="Easy",
+            minutes=10,
+            emoji="🎨",
+            skills=["Sensory exploration", "Colour recognition"],
+            steps=["Dip fingers in paint", "Make handprints", "Talk about colours"],
+            for_level=[1],
+        )
+        db.add(easy_art)
+
+    # Child has Level 1 in art; bridge-builders requires Level 2 or 3
+    tanya = db.query(Child).filter(Child.id == "child-tanya-art1").first()
+    if not tanya:
+        tanya = Child(
+            id="child-tanya-art1",
+            name="Tanya",
+            age=3.5,
+            avatar="👧🏽",
+            tone="sun",
+            scores={"art": 1},
+            strengths=["Enjoys finger painting"],
+            needs=["Beginning fine motor exploration"],
+        )
+        db.add(tanya)
+
+    obs = db.query(Observation).filter(Observation.id == "obs-tanya-art1").first()
+    if not obs:
+        obs = Observation(
+            id="obs-tanya-art1",
+            child_id="child-tanya-art1",
+            domain="art",
+            activity_id="rec-act-finger-paint",
+            score=1,
+            note="Needs simple, direct sensory exploration",
+            date="2026-10-19T10:00:00Z",
+            is_baseline=False,
+        )
+        db.add(obs)
+
+    db.commit()
+    db.close()
+
+    payload = {
+        "child_id": "child-tanya-art1",
+        "limit_domains": 1,
+    }
+
+    with patch("app.ai_recommendations.get_groq_api_key", return_value=None):
+        res = client.post("/api/recommendations/personalized", json=payload)
+        assert res.status_code == 200
+        data = res.json()
+        assert len(data["recommendations"]) == 1
+        rec = data["recommendations"][0]
+        # Must NOT recommend bridge-builders (level 2/3) for level 1 child!
+        assert rec["activity_id"] != "bridge-builders"
+        assert rec["activity_id"] == "rec-act-finger-paint"
+
 
 

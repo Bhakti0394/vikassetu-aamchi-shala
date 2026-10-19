@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -57,6 +58,137 @@ class AIStatusResponse(BaseModel):
     configured: bool
     model: str
     engine: str = "Groq Hybrid Recommendation Engine"
+
+def calculate_activity_suitability(
+    activity: dict,
+    child_age: float,
+    score: int,
+    child_strengths: List[str],
+    child_needs: List[str],
+    evidence_notes: List[str],
+    logs_data: List[dict],
+) -> float:
+    """
+    Computes a pedagogical suitability score for candidate activities.
+    Ranks activities according to developmental level, age, observed needs,
+    classroom evidence, strengths, and past trial scaffolding.
+    """
+    suitability = 0.0
+    for_level = activity.get("for_level") or []
+
+    # 1. Developmental level alignment
+    if score in for_level:
+        suitability += 35.0
+    else:
+        min_dist = min([abs(score - lvl) for lvl in for_level]) if for_level else 2
+        suitability -= min_dist * 20.0
+
+    # 2. Age and difficulty/duration suitability
+    difficulty = activity.get("difficulty", "Easy")
+    minutes = activity.get("minutes", 15)
+
+    if child_age < 4.0:
+        if difficulty == "Easy":
+            suitability += 15.0
+        elif difficulty == "Hard":
+            suitability -= 20.0
+        if minutes <= 10:
+            suitability += 10.0
+        elif minutes >= 20:
+            suitability -= 10.0
+    elif child_age >= 5.0:
+        if difficulty in ("Medium", "Hard"):
+            suitability += 15.0
+        elif difficulty == "Easy" and score >= 2:
+            suitability -= 5.0
+        if minutes >= 15:
+            suitability += 10.0
+    else:
+        suitability += 5.0
+
+    # 3. Needs & Evidence alignment
+    act_text = (
+        f"{activity.get('name', '')} "
+        f"{' '.join(activity.get('skills', []))} "
+        f"{' '.join(activity.get('steps', []))}"
+    ).lower()
+
+    for need in child_needs:
+        need_clean = need.strip().lower()
+        if not need_clean:
+            continue
+        tokens = [t for t in re.findall(r"[a-z0-9]+", need_clean) if len(t) >= 4]
+        for token in tokens:
+            if token in act_text:
+                suitability += 12.0
+        # Specific pedagogical mappings
+        if ("beyond 5" in need_clean or "1-10" in need_clean or "counting" in need_clean) and (
+            "1-10" in act_text or "count" in act_text or "hopscotch" in act_text or "number" in act_text
+        ):
+            suitability += 20.0
+        if (
+            "movement" in need_clean
+            or "sitting" in need_clean
+            or "energy" in need_clean
+            or "active" in need_clean
+            or "focus" in need_clean
+        ) and (
+            "motor" in act_text
+            or "freeze" in act_text
+            or "dance" in act_text
+            or "jump" in act_text
+            or "walk" in act_text
+            or "balance" in act_text
+        ):
+            suitability += 20.0
+        if ("motor" in need_clean or "pencil" in need_clean or "grip" in need_clean or "grasp" in need_clean) and (
+            "fine motor" in act_text or "bridge" in act_text or "clay" in act_text or "bead" in act_text or "pattern" in act_text
+        ):
+            suitability += 15.0
+        if ("rhythm" in need_clean or "sound" in need_clean or "pronun" in need_clean or "syllable" in need_clean) and (
+            "rhythm" in act_text or "clap" in act_text or "sound" in act_text or "syllable" in act_text
+        ):
+            suitability += 20.0
+        if ("story" in need_clean or "narrative" in need_clean or "express" in need_clean or "vocab" in need_clean) and (
+            "story" in act_text or "stones" in act_text or "sequencing" in act_text or "language" in act_text
+        ):
+            suitability += 15.0
+
+    for ev in evidence_notes:
+        ev_clean = ev.strip().lower()
+        if not ev_clean:
+            continue
+        tokens = [t for t in re.findall(r"[a-z0-9]+", ev_clean) if len(t) >= 4]
+        for token in tokens:
+            if token in act_text:
+                suitability += 8.0
+
+    for strn in child_strengths:
+        strn_clean = strn.strip().lower()
+        if not strn_clean:
+            continue
+        tokens = [t for t in re.findall(r"[a-z0-9]+", strn_clean) if len(t) >= 4]
+        for token in tokens:
+            if token in act_text:
+                suitability += 6.0
+
+    # 4. Scaffolding from prior trial outcomes
+    act_id = activity.get("id")
+    prior_trials = [l for l in logs_data if l.get("activity_id") == act_id]
+    had_support_need = any(l.get("outcome") == "tried_needs_support" for l in logs_data)
+    if had_support_need:
+        if difficulty == "Easy":
+            suitability += 12.0
+        elif difficulty in ("Medium", "Hard"):
+            suitability -= 8.0
+
+    # 5. Freshness bonus
+    if not prior_trials:
+        suitability += 10.0
+    else:
+        suitability -= len(prior_trials) * 15.0
+
+    return suitability
 
 @router.get("/status", response_model=AIStatusResponse)
 def get_ai_status():
@@ -326,20 +458,22 @@ async def get_personalized_recommendations(
         if not candidates:
             continue
 
-        # Sort untried candidates:
-        # - Easy difficulty first if support was needed
-        # - Fewer trial counts first
-        candidates.sort(key=lambda c: (
-            0 if (had_support_need and c.get("difficulty") == "Easy") else 1,
-            len([l for l in logs_data if l["activity_id"] == c["id"]]),
-        ))
-
+        child_age = float(child.age) if child and child.age is not None else 4.0
         evidence_list = domain_evidence.get(domain, [])
         child_strengths = child.strengths or []
         child_needs = child.needs or []
 
+        # Sort untried candidates by pedagogical suitability
+        candidates.sort(
+            key=lambda c: calculate_activity_suitability(
+                c, child_age, score, child_strengths, child_needs, evidence_list, logs_data
+            ),
+            reverse=True,
+        )
+
         rec_item = await generate_ai_recommendation(
             child_id=child.id,
+            child_age=child_age,
             domain=domain,
             score=score,
             candidate_activities=candidates,

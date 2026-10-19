@@ -455,7 +455,7 @@ describe("Recommendation Engine (src/lib/recommend.ts)", () => {
         },
       ];
 
-      // Both art activities (leaf-painting and free-drawing) have been tried and helped
+      // All art activities (leaf-painting, free-drawing, nature-treasure-mandala) have been tried and helped
       const logs: ActivityLogSummary[] = [
         {
           childId: "aarav",
@@ -469,12 +469,18 @@ describe("Recommendation Engine (src/lib/recommend.ts)", () => {
           outcome: "tried_helped",
           createdAt: "2026-10-16T10:00:00Z",
         },
+        {
+          childId: "aarav",
+          activityId: "nature-treasure-mandala",
+          outcome: "tried_helped",
+          createdAt: "2026-10-17T10:00:00Z",
+        },
       ];
 
       const recs = recommendFor(testChild, obs, logs);
       expect(recs.length).toBe(1);
       // Valid activity from catalog is still returned for continued practice
-      expect(["leaf-painting", "free-drawing"]).toContain(recs[0]?.activity.id);
+      expect(["leaf-painting", "free-drawing", "nature-treasure-mandala"]).toContain(recs[0]?.activity.id);
     });
 
     it("updates the evidence rationale when a new observation note is recorded", () => {
@@ -518,7 +524,7 @@ describe("Recommendation Engine (src/lib/recommend.ts)", () => {
         { id: "5", childId: "aarav", domain: "stories", activityId: "story-circle", score: 1, note: "Stories", date: "2026-10-18T10:00:00Z" },
       ];
 
-      const validIds = new Set(["alphabet-match", "letter-sounds", "name-tracing", "count-match", "bead-counting", "colour-hunt", "shape-sort", "leaf-painting", "free-drawing", "story-circle", "handwash-song"]);
+      const validIds = new Set(["alphabet-match", "letter-sounds", "name-tracing", "count-match", "bead-counting", "colour-hunt", "shape-sort", "leaf-painting", "free-drawing", "story-circle", "handwash-song", "number-hopscotch", "bridge-builders", "colour-mixing-lab", "shadow-detective", "shape-hunt-walk", "rhythm-name-clap", "story-stones", "nature-treasure-mandala", "seed-diary", "freeze-and-feel-dance"]);
 
       const recs = recommendFor(testChild, allObservations);
       for (const r of recs) {

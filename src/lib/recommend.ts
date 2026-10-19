@@ -231,6 +231,124 @@ function buildPedagogicalReason(
 }
 
 /**
+ * Calculates a pedagogical suitability score for candidate activities.
+ * Ranks activities according to developmental level, child age, observed needs,
+ * classroom evidence, strengths, and past trial scaffolding.
+ */
+export function calculateActivitySuitability(
+  activity: Activity,
+  child: Child,
+  score: Score,
+  evidenceNotes: string[] = [],
+  childLogs: ActivityLogSummary[] = [],
+): number {
+  let suitability = 0;
+
+  // 1. Developmental level alignment
+  if (activity.forLevel.includes(score)) {
+    suitability += 35;
+  } else {
+    const minDiff = Math.min(...activity.forLevel.map((lvl) => Math.abs(score - lvl)));
+    suitability -= minDiff * 20;
+  }
+
+  // 2. Age and difficulty/duration suitability
+  const age = child.age ?? 4.0;
+  if (age < 4.0) {
+    if (activity.difficulty === "Easy") suitability += 15;
+    if (activity.minutes <= 10) suitability += 10;
+    else if (activity.minutes >= 20) suitability -= 10;
+  } else if (age >= 5.0) {
+    if (activity.difficulty === "Medium") suitability += 15;
+    else if (activity.difficulty === "Easy" && score >= 2) suitability -= 5;
+    if (activity.minutes >= 15) suitability += 10;
+  } else {
+    suitability += 5;
+  }
+
+  // 3. Needs & Evidence alignment
+  const actText = `${activity.name} ${activity.skills.join(" ")} ${activity.steps.join(" ")}`.toLowerCase();
+
+  for (const need of child.needs || []) {
+    const needClean = need.trim().toLowerCase();
+    if (!needClean) continue;
+    const tokens = needClean.match(/[a-z0-9]+/g)?.filter((t) => t.length >= 4) || [];
+    for (const token of tokens) {
+      if (actText.includes(token)) suitability += 12;
+    }
+    // Specific pedagogical mappings
+    if (
+      (needClean.includes("beyond 5") || needClean.includes("1-10") || needClean.includes("counting")) &&
+      (actText.includes("1-10") || actText.includes("count") || actText.includes("hopscotch") || actText.includes("number"))
+    ) {
+      suitability += 20;
+    }
+    if (
+      (needClean.includes("movement") || needClean.includes("sitting") || needClean.includes("energy") || needClean.includes("active") || needClean.includes("focus")) &&
+      (actText.includes("motor") || actText.includes("freeze") || actText.includes("dance") || actText.includes("jump") || actText.includes("walk") || actText.includes("balance"))
+    ) {
+      suitability += 20;
+    }
+    if (
+      (needClean.includes("motor") || needClean.includes("pencil") || needClean.includes("grip") || needClean.includes("grasp")) &&
+      (actText.includes("fine motor") || actText.includes("bridge") || actText.includes("clay") || actText.includes("bead") || actText.includes("pattern"))
+    ) {
+      suitability += 15;
+    }
+    if (
+      (needClean.includes("rhythm") || needClean.includes("sound") || needClean.includes("pronun") || needClean.includes("syllable")) &&
+      (actText.includes("rhythm") || actText.includes("clap") || actText.includes("sound") || actText.includes("syllable"))
+    ) {
+      suitability += 20;
+    }
+    if (
+      (needClean.includes("story") || needClean.includes("narrative") || needClean.includes("express") || needClean.includes("vocab")) &&
+      (actText.includes("story") || actText.includes("stones") || actText.includes("sequencing") || actText.includes("language"))
+    ) {
+      suitability += 15;
+    }
+  }
+
+  for (const ev of evidenceNotes) {
+    const evClean = ev.trim().toLowerCase();
+    if (!evClean) continue;
+    const tokens = evClean.match(/[a-z0-9]+/g)?.filter((t) => t.length >= 4) || [];
+    for (const token of tokens) {
+      if (actText.includes(token)) suitability += 8;
+    }
+  }
+
+  for (const strn of child.strengths || []) {
+    const strnClean = strn.trim().toLowerCase();
+    if (!strnClean) continue;
+    const tokens = strnClean.match(/[a-z0-9]+/g)?.filter((t) => t.length >= 4) || [];
+    for (const token of tokens) {
+      if (actText.includes(token)) suitability += 6;
+    }
+  }
+
+  // 4. Scaffolding from prior trial outcomes
+  const childHadSupportNeed = childLogs.some((l) => l.outcome === "tried_needs_support");
+  if (childHadSupportNeed) {
+    if (activity.difficulty === "Easy") suitability += 12;
+    else if (activity.difficulty === "Medium") suitability -= 8;
+  }
+
+  // 5. Freshness bonus
+  const trialCount = childLogs.filter(
+    (l) => l.activityId === activity.id && (l.outcome === "tried_helped" || l.outcome === "tried_needs_support"),
+  ).length;
+
+  if (trialCount === 0) {
+    suitability += 10;
+  } else {
+    suitability -= trialCount * 15;
+  }
+
+  return suitability;
+}
+
+/**
  * Rule-based recommendation engine for early preschool learners.
  *
  * Evaluates actual classroom observations, respects baselines, rotates
@@ -344,16 +462,13 @@ export function recommendFor(
         ACTIVITIES.find((act) => act.id === l.activityId)?.domain === domainId,
     );
 
-    // Sort candidates:
-    // - If child had support needs in domain, prioritize "Easy" difficulty over "Medium"
-    // - Fewer completed trials first
+    const evidenceList = analysis.evidence[domainId] || [];
+
+    // Sort candidates by pedagogical suitability
     const sortedCandidates = [...candidates].sort((a, b) => {
-      if (childHadSupportNeed && a.difficulty !== b.difficulty) {
-        return a.difficulty === "Easy" ? -1 : 1;
-      }
-      const countA = childLogs.filter((l) => l.activityId === a.id && (l.outcome === "tried_helped" || l.outcome === "tried_needs_support")).length;
-      const countB = childLogs.filter((l) => l.activityId === b.id && (l.outcome === "tried_helped" || l.outcome === "tried_needs_support")).length;
-      return countA - countB;
+      const scoreA = calculateActivitySuitability(a, child, score, evidenceList, childLogs);
+      const scoreB = calculateActivitySuitability(b, child, score, evidenceList, childLogs);
+      return scoreB - scoreA;
     });
 
     const primaryActivity = sortedCandidates[0];
@@ -401,7 +516,6 @@ export function recommendFor(
         ? `Support Adaptation: Following support needed in ${priorName || "previous practice"}, introduce ${primaryActivity.name} with smaller micro-steps, physical manipulatives, and 1-on-1 modeling.`
         : undefined;
 
-    const evidenceList = analysis.evidence[domainId] || [];
     const reason = buildPedagogicalReason(
       child.name,
       domainId,
