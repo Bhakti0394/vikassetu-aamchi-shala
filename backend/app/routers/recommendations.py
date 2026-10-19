@@ -223,6 +223,13 @@ async def get_personalized_recommendations(
             if note.strip() not in domain_evidence[dom]:
                 domain_evidence[dom].append(note.strip())
 
+    # Identify all completed activity IDs for this child (both helped and needs-support trials)
+    completed_activity_ids = {
+        l["activity_id"]
+        for l in logs_data
+        if l.get("outcome") in ("tried_helped", "tried_needs_support") and l.get("activity_id")
+    }
+
     # Incorporate activity trial logs as classroom evidence
     for l in logs_data:
         act = db.query(Activity).filter(Activity.id == l["activity_id"]).first()
@@ -241,38 +248,32 @@ async def get_personalized_recommendations(
                 latest_scores[act.domain] = 2 if l["outcome"] == "tried_helped" else 1
 
     # 1. Weakest assessed domains (score < 3, prioritized: score 1 over score 2)
-    weak_domains = []
+    candidate_targets = []
     for d in domain_order:
         s = latest_scores.get(d)
         if s is not None and s < 3:
-            weak_domains.append({"domain": d, "score": s, "is_exploratory": False})
+            candidate_targets.append({"domain": d, "score": s, "is_exploratory": False})
 
-    weak_domains.sort(key=lambda x: (x["score"], domain_order.index(x["domain"])))
-    selected_domains = weak_domains[: payload.limit_domains]
+    candidate_targets.sort(key=lambda x: (x["score"], domain_order.index(x["domain"])))
 
-    # 2. If all assessed domains are score 3 (e.g. Yash with Level 3, or all 5 at Level 3):
-    # Offer Level 3 creative extension / peer leadership in observed domains
-    if not selected_domains and latest_scores:
-        for d in domain_order:
-            if d in latest_scores and not any(sd["domain"] == d for sd in selected_domains):
-                selected_domains.append({"domain": d, "score": 3, "is_exploratory": False})
-                if len(selected_domains) >= payload.limit_domains:
-                    break
+    # 2. Add assessed domains at score 3 (extension and leadership practice)
+    for d in domain_order:
+        s = latest_scores.get(d)
+        if s == 3 and not any(t["domain"] == d for t in candidate_targets):
+            candidate_targets.append({"domain": d, "score": 3, "is_exploratory": False})
 
-    # 3. If child has no observations, or fewer than limit, pull in unobserved domains with baseline needs
-    if len(selected_domains) < payload.limit_domains and not latest_scores:
-        unobserved = [d for d in domain_order if d not in latest_scores]
-        if unobserved:
-            unobserved_needs = []
-            for d in unobserved:
-                child_scores = child.scores if isinstance(child.scores, dict) else {}
-                b_score = child_scores.get(d, 1)
-                unobserved_needs.append({"domain": d, "score": b_score, "is_exploratory": True})
-            unobserved_needs.sort(key=lambda x: (x["score"], domain_order.index(x["domain"])))
-            for un_need in unobserved_needs:
-                if len(selected_domains) >= payload.limit_domains:
-                    break
-                selected_domains.append(un_need)
+    # 3. Add unobserved domains (using child profile baseline score or 1)
+    unobserved = [d for d in domain_order if d not in latest_scores]
+    if unobserved:
+        unobserved_needs = []
+        for d in unobserved:
+            child_scores = child.scores if isinstance(child.scores, dict) else {}
+            b_score = child_scores.get(d, 1)
+            unobserved_needs.append({"domain": d, "score": b_score, "is_exploratory": True})
+        unobserved_needs.sort(key=lambda x: (x["score"], domain_order.index(x["domain"])))
+        for un_need in unobserved_needs:
+            if not any(t["domain"] == un_need["domain"] for t in candidate_targets):
+                candidate_targets.append(un_need)
 
     # All activities from DB
     all_activities = db.query(Activity).all()
@@ -294,48 +295,44 @@ async def get_personalized_recommendations(
     had_support_need = any(l["outcome"] == "tried_needs_support" for l in logs_data)
 
     recommendations: List[RecommendationPedagogy] = []
+    chosen_activity_ids = set()
     is_any_fallback = False
 
-    for target in selected_domains:
+    for target in candidate_targets:
+        if len(recommendations) >= payload.limit_domains:
+            break
+
         domain = target["domain"]
         score = target["score"]
-        is_exploratory = target.get("is_exploratory", False)
 
+        # 1. Level-matched untried candidates for this domain
+        domain_all = activities_by_domain.get(domain, [])
         candidates = [
-            a for a in activities_by_domain.get(domain, [])
+            a for a in domain_all
             if score in a.get("for_level", [])
+            and a["id"] not in completed_activity_ids
+            and a["id"] not in chosen_activity_ids
         ]
+
+        # 2. If no untried candidate matches the exact level, check other untried candidates in this domain
         if not candidates:
-            candidates = activities_by_domain.get(domain, [])
+            candidates = [
+                a for a in domain_all
+                if a["id"] not in completed_activity_ids
+                and a["id"] not in chosen_activity_ids
+            ]
+
+        # If all candidates in this domain have been completed or already chosen, move to next domain target
         if not candidates:
             continue
 
-        # Smart Evidence-Aware Candidate Rotation:
-        cand_stats = []
-        for cand in candidates:
-            c_logs = [l for l in logs_data if l["activity_id"] == cand["id"]]
-            helped = any(l["outcome"] == "tried_helped" for l in c_logs)
-            needs_support = bool(c_logs and c_logs[0]["outcome"] == "tried_needs_support")
-            cand_stats.append({
-                "cand": cand,
-                "trial_count": len(c_logs),
-                "helped": helped,
-                "needs_support": needs_support,
-            })
-
-        # Separate unmastered candidates from helped candidates
-        unmastered = [cs for cs in cand_stats if not cs["helped"]]
-        pool_stats = unmastered if unmastered else cand_stats
-
-        # Sort pool:
-        # 1. Easy difficulty first if support needed
-        # 2. Fewer trial counts first (rotates so untried activities get presented)
-        pool_stats.sort(key=lambda cs: (
-            0 if (had_support_need and cs["cand"].get("difficulty") == "Easy") else 1,
-            cs["trial_count"],
+        # Sort untried candidates:
+        # - Easy difficulty first if support was needed
+        # - Fewer trial counts first
+        candidates.sort(key=lambda c: (
+            0 if (had_support_need and c.get("difficulty") == "Easy") else 1,
+            len([l for l in logs_data if l["activity_id"] == c["id"]]),
         ))
-
-        sorted_candidates = [cs["cand"] for cs in pool_stats]
 
         evidence_list = domain_evidence.get(domain, [])
         child_strengths = child.strengths or []
@@ -345,17 +342,54 @@ async def get_personalized_recommendations(
             child_id=child.id,
             domain=domain,
             score=score,
-            candidate_activities=sorted_candidates,
+            candidate_activities=candidates,
             evidence_notes=evidence_list,
             child_strengths=child_strengths,
             child_needs=child_needs,
             recent_logs=logs_data,
         )
 
+        # Safety: ensure AI didn't return a completed activity or duplicate
+        if rec_item.activity_id in completed_activity_ids or rec_item.activity_id in chosen_activity_ids:
+            safe_act = candidates[0]
+            rec_item = build_deterministic_item(
+                child.id, domain, score, safe_act,
+                evidence_list, child_strengths, child_needs, logs_data
+            )
+
         if not rec_item.is_ai_generated:
             is_any_fallback = True
 
+        chosen_activity_ids.add(rec_item.activity_id)
         recommendations.append(rec_item)
+
+    # 4. If we still have fewer than limit_domains, check any remaining untried activities across the entire catalog
+    if len(recommendations) < payload.limit_domains:
+        for act in all_activities:
+            if len(recommendations) >= payload.limit_domains:
+                break
+            if act.id in completed_activity_ids or act.id in chosen_activity_ids:
+                continue
+
+            fallback_act = {
+                "id": act.id,
+                "name": act.name,
+                "domain": act.domain,
+                "difficulty": act.difficulty,
+                "minutes": act.minutes,
+                "emoji": act.emoji,
+                "skills": act.skills or [],
+                "steps": act.steps or [],
+                "for_level": act.for_level or [],
+            }
+            evidence_list = domain_evidence.get(act.domain, [])
+            rec_item = build_deterministic_item(
+                child.id, act.domain, 1, fallback_act,
+                evidence_list, child.strengths or [], child.needs or [], logs_data
+            )
+            is_any_fallback = True
+            chosen_activity_ids.add(rec_item.activity_id)
+            recommendations.append(rec_item)
 
     return ChildRecommendationResult(
         child_id=child.id,

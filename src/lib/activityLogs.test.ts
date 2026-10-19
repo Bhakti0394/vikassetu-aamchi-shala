@@ -17,7 +17,9 @@ import {
   resetOfflineQueueForTesting,
   saveActivityLog,
   syncPendingTrials,
+  summarizeChildPracticeHistory,
   type ActivityLogPayload,
+  type ChildActivityHistoryItem,
 } from "./activityLogs";
 
 describe("Activity Logs Client (src/lib/activityLogs.ts)", () => {
@@ -948,5 +950,94 @@ describe("Activity Logs Client (src/lib/activityLogs.ts)", () => {
       vi.restoreAllMocks();
     });
   });
+
+  describe("summarizeChildPracticeHistory (Phase 4 TASK-4.5)", () => {
+    it("accurately summarizes confirmed and queued trial counts and domain breakdowns", () => {
+      const mockTrials: ChildActivityHistoryItem[] = [
+        {
+          type: "confirmed",
+          record: {
+            id: 1,
+            childId: "aarav",
+            activityId: "alphabet-match",
+            completedSteps: 3,
+            totalSteps: 3,
+            outcome: "tried_helped",
+            createdAt: "2026-10-18T10:00:00Z",
+          },
+        },
+        {
+          type: "confirmed",
+          record: {
+            id: 2,
+            childId: "aarav",
+            activityId: "count-match",
+            completedSteps: 1,
+            totalSteps: 3,
+            outcome: "tried_needs_support",
+            createdAt: "2026-10-18T11:00:00Z",
+          },
+        },
+        {
+          type: "queued",
+          queued: {
+            queueId: "q-1",
+            clientTrialId: "uuid-1",
+            childId: "aarav",
+            activityId: "leaf-painting",
+            completedSteps: 3,
+            totalSteps: 3,
+            outcome: "tried_helped",
+            status: "pending_sync",
+            queuedAt: "2026-10-19T10:00:00Z",
+          },
+        },
+        {
+          type: "queued",
+          queued: {
+            queueId: "q-2",
+            clientTrialId: "uuid-2",
+            childId: "aarav",
+            activityId: "free-drawing",
+            completedSteps: 0,
+            totalSteps: 3,
+            outcome: "not_tried",
+            status: "pending_sync",
+            queuedAt: "2026-10-19T11:00:00Z",
+          },
+        },
+      ];
+
+      const domainMap: Record<string, string> = {
+        "alphabet-match": "alphabet",
+        "count-match": "numbers",
+        "leaf-painting": "art",
+        "free-drawing": "art",
+      };
+
+      const summary = summarizeChildPracticeHistory(
+        mockTrials,
+        (actId) => domainMap[actId],
+      );
+
+      expect(summary.totalTrials).toBe(4);
+      expect(summary.helpedCount).toBe(2);
+      expect(summary.needsSupportCount).toBe(1);
+      expect(summary.notTriedCount).toBe(1);
+      expect(summary.domainCounts["alphabet"]).toBe(1);
+      expect(summary.domainCounts["numbers"]).toBe(1);
+      expect(summary.domainCounts["art"]).toBe(2);
+    });
+
+    it("returns empty summary safely when child has zero trials", () => {
+      const summary = summarizeChildPracticeHistory([]);
+      expect(summary.totalTrials).toBe(0);
+      expect(summary.helpedCount).toBe(0);
+      expect(summary.needsSupportCount).toBe(0);
+      expect(summary.notTriedCount).toBe(0);
+      expect(summary.domainCounts).toEqual({});
+    });
+  });
 });
+
 

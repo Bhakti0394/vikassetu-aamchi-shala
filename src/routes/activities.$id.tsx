@@ -320,7 +320,7 @@ function ActivityRun() {
             disabled={isSaving || !selectedChildId}
             onClick={() => handleRecordOutcome("tried_helped")}
             aria-label="Record outcome: Tried, Helped"
-            className="flex min-h-[48px] items-center justify-center rounded-xl border border-teal/40 bg-teal-soft px-3 py-2.5 text-center text-sm font-bold text-teal transition hover:opacity-90 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            className="min-h-[48px] rounded-xl border border-teal/40 bg-teal-soft px-3 py-2 text-center text-sm font-bold text-teal transition hover:opacity-90 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             Tried — Helped
           </button>
@@ -330,7 +330,7 @@ function ActivityRun() {
             disabled={isSaving || !selectedChildId}
             onClick={() => handleRecordOutcome("tried_needs_support")}
             aria-label="Record outcome: Tried, Needs Support"
-            className="flex min-h-[48px] items-center justify-center rounded-xl border border-sun/40 bg-sun-soft px-3 py-2.5 text-center text-sm font-bold text-foreground transition hover:opacity-90 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            className="min-h-[48px] rounded-xl border border-sun/40 bg-sun-soft px-3 py-2 text-center text-sm font-bold text-foreground transition hover:opacity-90 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             Tried — Needs Support
           </button>
@@ -340,7 +340,7 @@ function ActivityRun() {
             disabled={isSaving || !selectedChildId}
             onClick={() => handleRecordOutcome("not_tried")}
             aria-label="Record outcome: Not Tried"
-            className="flex min-h-[48px] items-center justify-center rounded-xl border border-border bg-background/70 px-3 py-2.5 text-center text-sm font-bold text-muted-foreground transition hover:opacity-90 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            className="min-h-[48px] rounded-xl border border-border bg-background/70 px-3 py-2 text-center text-sm font-bold text-muted-foreground transition hover:opacity-90 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             Not Tried
           </button>

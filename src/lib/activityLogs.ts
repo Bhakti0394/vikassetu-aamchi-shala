@@ -1,4 +1,40 @@
+import { invalidateRecommendationCache } from "./aiRecommendations";
+
 export type ActivityLogOutcome = "tried_helped" | "tried_needs_support" | "not_tried";
+
+export function isCompletedTrial(outcome: string): boolean {
+  return outcome === "tried_helped" || outcome === "tried_needs_support";
+}
+
+export type TrialChangeListener = (
+  childId: string,
+  activityId: string,
+  outcome: ActivityLogOutcome,
+) => void;
+
+const trialChangeListeners = new Set<TrialChangeListener>();
+
+export function registerTrialChangeListener(listener: TrialChangeListener): () => void {
+  trialChangeListeners.add(listener);
+  return () => {
+    trialChangeListeners.delete(listener);
+  };
+}
+
+export function notifyTrialChange(
+  childId: string,
+  activityId: string,
+  outcome: ActivityLogOutcome,
+): void {
+  try {
+    invalidateRecommendationCache(childId);
+  } catch {}
+  for (const listener of trialChangeListeners) {
+    try {
+      listener(childId, activityId, outcome);
+    } catch {}
+  }
+}
 
 export type ActivityLogPayload = {
   childId: string;
@@ -53,6 +89,7 @@ export async function saveActivityLog(
     }
 
     const data = (await res.json()) as ActivityLogRecord;
+    notifyTrialChange(payload.childId, payload.activityId, payload.outcome);
     return { success: true, data };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Network error or backend unreachable";
@@ -119,6 +156,48 @@ export type ChildActivityHistoryItem =
       type: "queued";
       queued: QueuedActivityTrial;
     };
+
+export type PracticeHistorySummary = {
+  totalTrials: number;
+  helpedCount: number;
+  needsSupportCount: number;
+  notTriedCount: number;
+  domainCounts: Record<string, number>;
+};
+
+export function summarizeChildPracticeHistory(
+  trials: ChildActivityHistoryItem[],
+  resolveActivityDomain?: (activityId: string) => string | undefined,
+): PracticeHistorySummary {
+  let helpedCount = 0;
+  let needsSupportCount = 0;
+  let notTriedCount = 0;
+  const domainCounts: Record<string, number> = {};
+
+  for (const t of trials) {
+    const outcome = t.type === "queued" ? t.queued.outcome : t.record.outcome;
+    const actId = t.type === "queued" ? t.queued.activityId : t.record.activityId;
+
+    if (outcome === "tried_helped") helpedCount++;
+    else if (outcome === "tried_needs_support") needsSupportCount++;
+    else if (outcome === "not_tried") notTriedCount++;
+
+    if (resolveActivityDomain) {
+      const dom = resolveActivityDomain(actId);
+      if (dom) {
+        domainCounts[dom] = (domainCounts[dom] || 0) + 1;
+      }
+    }
+  }
+
+  return {
+    totalTrials: helpedCount + needsSupportCount + notTriedCount,
+    helpedCount,
+    needsSupportCount,
+    notTriedCount,
+    domainCounts,
+  };
+}
 
 // ============================================================================
 // Idempotency, Concurrency & Retry Engine Configuration
@@ -413,6 +492,7 @@ export function resetOfflineQueueForTesting(): void {
   initPromise = null;
   dbPromise = null;
   syncCompletionListeners.clear();
+  trialChangeListeners.clear();
   storageStatus = {
     engine: "indexeddb",
     isPersistent: false,
@@ -487,6 +567,7 @@ export function queuePendingTrial(
     };
   });
 
+  notifyTrialChange(payload.childId, payload.activityId, payload.outcome);
   return item;
 }
 
@@ -513,8 +594,12 @@ export function clearPendingTrials(): void {
  * Only removes the explicitly targeted trial by queueId, preventing accidental deletion of other items.
  */
 export function dismissPendingTrial(queueId: string): void {
-  memoryQueue = memoryQueue.filter((item) => item.queueId !== queueId);
+  const item = memoryQueue.find((i) => i.queueId === queueId);
+  memoryQueue = memoryQueue.filter((i) => i.queueId !== queueId);
   removeFromStorage(queueId).catch(() => {});
+  if (item) {
+    notifyTrialChange(item.childId, item.activityId, item.outcome);
+  }
 }
 
 export const removePendingTrial = dismissPendingTrial;
