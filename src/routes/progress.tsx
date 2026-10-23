@@ -113,6 +113,9 @@ function ProgressPage() {
   const [observationDate, setObservationDate] = useState<string>(todayDateString());
   const [domain, setDomain] = useState<DomainId | undefined>(search.domain);
   const [activityId, setActivityId] = useState<string | undefined>(search.activity);
+  const [activityDomainFilter, setActivityDomainFilter] = useState<DomainId | "all">(
+    search.domain ?? "all"
+  );
   const [score, setScore] = useState<Score | undefined>();
   const [note, setNote] = useState("");
 
@@ -224,18 +227,34 @@ interface FormErrors {
     setChildId(search.child);
     setDomain(search.domain);
     setActivityId(search.activity);
+    if (search.domain) {
+      setActivityDomainFilter(search.domain);
+    } else if (search.activity) {
+      const act = activitiesList.find((a) => a.id === search.activity) || activityOf(search.activity);
+      if (act) {
+        setDomain(act.domain);
+        setActivityDomainFilter(act.domain);
+      }
+    } else {
+      setActivityDomainFilter("all");
+    }
     setScore(undefined);
     setNote("");
     setErrors({});
     setBackendError(null);
-  }, [search.child, search.domain, search.activity]);
+  }, [search.child, search.domain, search.activity, activitiesList]);
 
   const selectedChild = useMemo(() => {
     return childrenList.find((c) => c.id === childId);
   }, [childrenList, childId]);
 
+  const filteredActivities = useMemo(() => {
+    if (activityDomainFilter === "all") return activitiesList;
+    return activitiesList.filter((a) => a.domain === activityDomainFilter);
+  }, [activitiesList, activityDomainFilter]);
+
   const currentDomainActivities = useMemo(() => {
-    if (!domain) return [];
+    if (!domain) return activitiesList;
     return activitiesList.filter((a) => a.domain === domain);
   }, [activitiesList, domain]);
 
@@ -344,6 +363,7 @@ interface FormErrors {
     setObservationDate(todayDateString());
     setDomain(undefined);
     setActivityId(undefined);
+    setActivityDomainFilter("all");
     setScore(undefined);
     setNote("");
     setErrors({});
@@ -658,69 +678,212 @@ interface FormErrors {
           error={errors.domain}
           disabled={!selectedChild}
         >
-          <div className="grid gap-2 sm:grid-cols-2">
-            {DOMAINS.map((d) => (
-              <button
-                key={d.id}
-                type="button"
-                onClick={() => {
-                  setDomain(d.id);
-                  setActivityId(undefined); // Reset activity to prevent category mismatch
-                  if (errors.domain) setErrors((prev) => ({ ...prev, domain: undefined }));
-                }}
-                className={cn(
-                  "flex items-center gap-3 rounded-2xl border-2 p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-primary",
-                  domain === d.id
-                    ? "border-primary bg-primary-soft shadow-soft"
-                    : "border-transparent " + toneBg[d.tone]
-                )}
-              >
-                <span className="text-2xl">{d.emoji}</span>
-                <span className="flex-1 font-bold">{d.name}</span>
-                {selectedChild && (
-                  <span className="text-xs font-bold text-muted-foreground">
-                    current {selectedChild.scores[d.id]}/3
-                  </span>
-                )}
-              </button>
-            ))}
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <button
+              type="button"
+              onClick={() => {
+                setActivityDomainFilter("all");
+              }}
+              className={cn(
+                "flex items-center gap-3 rounded-2xl border-2 p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-primary",
+                activityDomainFilter === "all" && !domain
+                  ? "border-primary bg-primary-soft shadow-soft"
+                  : "border-transparent bg-muted/60 hover:bg-muted"
+              )}
+            >
+              <span className="text-2xl">✨</span>
+              <div className="flex-1 min-w-0">
+                <span className="font-bold block">All Learning Areas</span>
+                <span className="text-xs text-muted-foreground">All {activitiesList.length} activities</span>
+              </div>
+            </button>
+            {DOMAINS.map((d) => {
+              const dCount = activitiesList.filter((a) => a.domain === d.id).length;
+              return (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => {
+                    setDomain(d.id);
+                    setActivityDomainFilter(d.id);
+                    if (activityId) {
+                      const act = activitiesList.find((a) => a.id === activityId);
+                      if (act && act.domain !== d.id) {
+                        setActivityId(undefined);
+                      }
+                    }
+                    if (errors.domain) setErrors((prev) => ({ ...prev, domain: undefined }));
+                  }}
+                  className={cn(
+                    "flex items-center gap-3 rounded-2xl border-2 p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-primary",
+                    domain === d.id
+                      ? "border-primary bg-primary-soft shadow-soft"
+                      : "border-transparent " + toneBg[d.tone]
+                  )}
+                >
+                  <span className="text-2xl">{d.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold">{d.name}</span>
+                      <span className="text-[11px] opacity-70 font-semibold">({dCount})</span>
+                    </div>
+                    {selectedChild && (
+                      <span className="text-xs font-bold text-muted-foreground block">
+                        current {selectedChild.scores[d.id]}/3
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </Step>
 
         {/* Step 4: Select Activity */}
         <Step
           n={4}
-          title="Select activity"
+          title={
+            activityDomainFilter === "all"
+              ? `Select activity (All ${activitiesList.length} activities available)`
+              : `Select activity (${filteredActivities.length} available in ${domainOf(activityDomainFilter)?.short})`
+          }
           done={!!activityId}
           error={errors.activity}
-          disabled={!domain}
+          disabled={!selectedChild}
         >
-          {currentDomainActivities.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Please choose a learning area above first.</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {currentDomainActivities.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  onClick={() => {
-                    setActivityId(a.id);
-                    if (errors.activity) setErrors((prev) => ({ ...prev, activity: undefined }));
-                  }}
-                  className={cn(
-                    "flex items-center gap-2 rounded-full border-2 px-4 py-2 font-bold transition focus:outline-none focus:ring-2 focus:ring-primary text-sm",
-                    activityId === a.id
-                      ? "border-primary bg-primary-soft text-primary shadow-soft"
-                      : "border-border hover:bg-muted"
-                  )}
-                >
-                  <span>{a.emoji}</span>
-                  <span>{a.name}</span>
-                  <span className="text-xs opacity-60">({a.minutes}m)</span>
-                </button>
-              ))}
+          <div className="space-y-4">
+            {/* Filter pills to quickly switch domains or see all 21 */}
+            <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-border/50">
+              <span className="text-xs font-semibold text-muted-foreground mr-1">Filter area:</span>
+              <button
+                type="button"
+                onClick={() => setActivityDomainFilter("all")}
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer",
+                  activityDomainFilter === "all"
+                    ? "bg-foreground text-background shadow-xs"
+                    : "bg-muted text-muted-foreground hover:text-foreground"
+                )}
+              >
+                All ({activitiesList.length})
+              </button>
+              {DOMAINS.map((d) => {
+                const count = activitiesList.filter((a) => a.domain === d.id).length;
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => {
+                      setActivityDomainFilter(d.id);
+                      setDomain(d.id);
+                    }}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer",
+                      activityDomainFilter === d.id
+                        ? "bg-foreground text-background shadow-xs"
+                        : "bg-muted text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <span>{d.emoji}</span>
+                    <span>{d.short}</span>
+                    <span className="opacity-70 text-[10px]">({count})</span>
+                  </button>
+                );
+              })}
             </div>
-          )}
+
+            {/* Activities list */}
+            {activityDomainFilter === "all" ? (
+              <div className="space-y-4">
+                {DOMAINS.map((d) => {
+                  const domainActs = activitiesList.filter((a) => a.domain === d.id);
+                  if (domainActs.length === 0) return null;
+                  return (
+                    <div key={d.id} className="space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground pt-1">
+                        <span>{d.emoji}</span>
+                        <span>{d.name}</span>
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
+                          {domainActs.length}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {domainActs.map((a) => (
+                          <button
+                            key={a.id}
+                            type="button"
+                            data-testid={`activity-btn-${a.id}`}
+                            onClick={() => {
+                              setActivityId(a.id);
+                              setDomain(a.domain);
+                              if (errors.activity || errors.domain) {
+                                setErrors((prev) => ({ ...prev, activity: undefined, domain: undefined }));
+                              }
+                            }}
+                            className={cn(
+                              "flex items-center gap-2 rounded-xl border-2 px-3.5 py-2 font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary text-xs sm:text-sm cursor-pointer",
+                              activityId === a.id
+                                ? "border-primary bg-primary-soft text-primary shadow-soft"
+                                : "border-border bg-card hover:bg-muted hover:border-muted-foreground/30"
+                            )}
+                          >
+                            <span className="text-base sm:text-lg">{a.emoji}</span>
+                            <span>{a.name}</span>
+                            <span className="text-[11px] opacity-60 font-normal">
+                              ({a.minutes}m · {a.difficulty})
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {filteredActivities.map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      data-testid={`activity-btn-${a.id}`}
+                      onClick={() => {
+                        setActivityId(a.id);
+                        setDomain(a.domain);
+                        if (errors.activity || errors.domain) {
+                          setErrors((prev) => ({ ...prev, activity: undefined, domain: undefined }));
+                        }
+                      }}
+                      className={cn(
+                        "flex items-center gap-2 rounded-xl border-2 px-3.5 py-2 font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary text-xs sm:text-sm cursor-pointer",
+                        activityId === a.id
+                          ? "border-primary bg-primary-soft text-primary shadow-soft"
+                          : "border-border bg-card hover:bg-muted hover:border-muted-foreground/30"
+                      )}
+                    >
+                      <span className="text-base sm:text-lg">{a.emoji}</span>
+                      <span>{a.name}</span>
+                      <span className="text-[11px] opacity-60 font-normal">
+                        ({a.minutes}m · {a.difficulty})
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+                  <span>
+                    Showing {filteredActivities.length} of {activitiesList.length} activities for {domainOf(activityDomainFilter)?.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setActivityDomainFilter("all")}
+                    className="btn btn-ghost text-xs py-1 px-2 font-bold text-primary hover:underline cursor-pointer"
+                  >
+                    View all {activitiesList.length} activities →
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </Step>
 
         {/* Step 5: Give a Score / Rating */}
@@ -1039,18 +1202,33 @@ interface FormErrors {
             {/* Activity Selector */}
             <div>
               <label className="text-xs font-bold text-muted-foreground uppercase block mb-1.5">
-                Activity
+                Activity ({activitiesList.length} total available)
               </label>
               <select
                 value={editActivityId}
-                onChange={(e) => setEditActivityId(e.target.value)}
+                onChange={(e) => {
+                  const newActId = e.target.value;
+                  setEditActivityId(newActId);
+                  const act = activitiesList.find((a) => a.id === newActId);
+                  if (act && act.domain !== editDomain) {
+                    setEditDomain(act.domain);
+                  }
+                }}
                 className="w-full rounded-lg border bg-background p-2.5 text-sm font-medium"
               >
-                {editDomainActivities.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.emoji} {a.name} ({a.difficulty})
-                  </option>
-                ))}
+                {DOMAINS.map((d) => {
+                  const acts = activitiesList.filter((a) => a.domain === d.id);
+                  if (acts.length === 0) return null;
+                  return (
+                    <optgroup key={d.id} label={`${d.emoji} ${d.name} (${acts.length})`}>
+                      {acts.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.emoji} {a.name} ({a.difficulty} · {a.minutes}m)
+                        </option>
+                      ))}
+                    </optgroup>
+                  );
+                })}
               </select>
             </div>
 
