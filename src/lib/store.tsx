@@ -31,6 +31,11 @@ type Ctx = State & {
   addChild: (name: string, age: number) => string;
   setPresent: (childId: string, present: boolean) => void;
   reset: () => void;
+  syncChild: (child: Child) => void;
+  syncObservation: (obs: Observation) => void;
+  removeObservationFromStore: (id: string) => void;
+  setChildren: (children: Child[]) => void;
+  setObservations: (observations: Observation[]) => void;
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
@@ -121,6 +126,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         },
       })),
     reset: () => setState(initial()),
+    syncChild: (child: Child) =>
+      setState((s) => ({
+        ...s,
+        children: s.children.some((c) => c.id === child.id)
+          ? s.children.map((c) => (c.id === child.id ? child : c))
+          : [...s.children, child],
+      })),
+    syncObservation: (obs: Observation) =>
+      setState((s) => ({
+        ...s,
+        observations: s.observations.some((o) => o.id === obs.id)
+          ? s.observations.map((o) => (o.id === obs.id ? obs : o))
+          : [obs, ...s.observations],
+      })),
+    removeObservationFromStore: (id: string) =>
+      setState((s) => ({
+        ...s,
+        observations: s.observations.filter((o) => o.id !== id),
+      })),
+    setChildren: (children: Child[]) =>
+      setState((s) => ({
+        ...s,
+        children,
+      })),
+    setObservations: (observations: Observation[]) =>
+      setState((s) => ({
+        ...s,
+        observations,
+      })),
   };
 
   return (

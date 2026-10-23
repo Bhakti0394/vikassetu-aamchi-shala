@@ -38,7 +38,7 @@ export const toneText: Record<Tone, string> = {
   primary: "text-primary",
 };
 
-export const domainOf = (id: DomainId) => DOMAINS.find((d) => d.id === id) ?? DOMAINS[0];
+export const domainOf = (id: DomainId) => (DOMAINS.find((d) => d.id === id) ?? DOMAINS[0])!;
 
 export const SCORE_LABEL: Record<Score, string> = {
   1: "Needs Support",
@@ -397,6 +397,7 @@ export type Observation = {
   score: Score;
   note: string;
   date: string;
+  isBaseline?: boolean;
 };
 
 export type Child = {
@@ -406,6 +407,7 @@ export type Child = {
   avatar: string;
   tone: Tone;
   scores: Record<DomainId, Score>;
+  observedDomains?: DomainId[];
   strengths: string[];
   needs: string[];
 };
