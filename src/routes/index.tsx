@@ -9,10 +9,14 @@ import {
   toneBg,
   toneFill,
   avgLevel,
+  type Child,
+  type DomainId,
 } from "@/lib/data";
-import { Avatar, DomainChip } from "@/components/ui-kit";
+import { DomainChip } from "@/components/ui-kit";
+import { ChildAvatar } from "@/components/ChildAvatar";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { apiRequest } from "@/lib/api";
 import heroAsset from "@/assets/bloom-hero-teacher.png.asset.json";
 
 function CountUp({ value }: { value: number }) {
@@ -49,19 +53,56 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
+interface DashboardSummaryData {
+  totalChildren: number;
+  presentToday: number;
+  needsAttentionCount: number;
+  activitiesDone: number;
+  attentionList: Child[];
+  domainDistribution: Record<DomainId, Record<number, number>>;
+}
+
 function Dashboard() {
   const { children, observations, attendance, completed } = useStore();
-  const present = children.filter((c) => isPresentToday(attendance, c.id)).length;
-  const attention = children.filter(needsAttention);
-  const focus = [...children].sort((a, b) => avgLevel(a) - avgLevel(b)).slice(0, 3);
+  const [summary, setSummary] = useState<DashboardSummaryData | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    apiRequest<DashboardSummaryData>("/dashboard/summary")
+      .then((data) => {
+        if (!active || !data) return;
+        setSummary(data);
+      })
+      .catch((err) => {
+        console.warn("Could not fetch /dashboard/summary from backend, using store data:", err);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Compute values: prioritize live backend summary, fallback to client store
+  const storePresent = children.filter((c) => isPresentToday(attendance, c.id)).length;
+  const storeAttention = children.filter(needsAttention);
+  const storeFocus = [...children].sort((a, b) => avgLevel(a) - avgLevel(b)).slice(0, 3);
+
+  const totalChildrenCount = summary?.totalChildren ?? children.length;
+  const presentCount = summary?.presentToday ?? storePresent;
+  const needsAttentionCount = summary?.needsAttentionCount ?? storeAttention.length;
+  const activitiesDoneCount = summary?.activitiesDone ?? completed;
+  const focusChildren = (summary?.attentionList && summary.attentionList.length > 0)
+    ? summary.attentionList.slice(0, 3)
+    : storeFocus;
+
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   const stats = [
-    { label: "Total Children", value: children.length, emoji: "🧒", tone: "bg-teal-soft" },
-    { label: "Present Today", value: present, emoji: "✅", tone: "bg-primary-soft" },
-    { label: "Need Attention", value: attention.length, emoji: "💛", tone: "bg-sun-soft" },
-    { label: "Activities Done", value: completed, emoji: "⭐", tone: "bg-coral-soft" },
+    { label: "Total Children", value: totalChildrenCount, emoji: "🧒", tone: "bg-teal-soft" },
+    { label: "Present Today", value: presentCount, emoji: "✅", tone: "bg-primary-soft" },
+    { label: "Need Attention", value: needsAttentionCount, emoji: "💛", tone: "bg-sun-soft" },
+    { label: "Activities Done", value: activitiesDoneCount, emoji: "⭐", tone: "bg-coral-soft" },
   ];
 
   return (
@@ -84,7 +125,7 @@ function Dashboard() {
               What should I do today?
             </h1>
             <p className="mt-3 max-w-md text-lg opacity-90">
-              Every child learns differently. {focus.length} children could use a little extra
+              Every child learns differently. {focusChildren.length} children could use a little extra
               support today — start with them.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
@@ -145,14 +186,14 @@ function Dashboard() {
           </Link>
         </div>
         <div className="grid gap-4 md:grid-cols-3 stagger">
-          {focus.map((ch) => {
+          {focusChildren.map((ch) => {
             const rec = recommendFor(ch, observations)[0];
             if (!rec) return null;
             const dom = domainOf(rec.domain);
             return (
               <div key={ch.id} className="card-soft tilt shine flex flex-col p-5">
                 <Link to="/children/$id" params={{ id: ch.id }} className="flex items-center gap-3">
-                  <Avatar child={ch} />
+                  <ChildAvatar child={ch} />
                   <div>
                     <p className="font-display text-xl font-bold">{ch.name}</p>
                     <p className="text-sm text-muted-foreground">
@@ -163,7 +204,7 @@ function Dashboard() {
                 <div className="mt-4 space-y-2 text-sm">
                   <DomainChip id={rec.domain} />
                   <p>
-                    <span className="font-bold">Need:</span> {ch.needs[0] ?? "More practice"}
+                    <span className="font-bold">Need:</span> {ch.needs?.[0] ?? "More practice"}
                   </p>
                 </div>
                 <div className="mt-4 flex-1 rounded-xl bg-muted p-3 text-sm">
@@ -195,10 +236,14 @@ function Dashboard() {
         </p>
         <div className="space-y-5">
           {DOMAINS.map((d) => {
-            const counts = [1, 2, 3].map(
-              (lvl) => children.filter((c) => c.scores[d.id] === lvl).length,
-            );
-            const total = children.length || 1;
+            const counts = [1, 2, 3].map((lvl) => {
+              if (summary?.domainDistribution?.[d.id]) {
+                return summary.domainDistribution[d.id][lvl] || 0;
+              }
+              return children.filter((c) => c.scores[d.id] === lvl).length;
+            });
+            const total = totalChildrenCount || 1;
+            const doingWell = counts[2] ?? 0;
             return (
               <div key={d.id}>
                 <div className="mb-2 flex items-center justify-between text-sm">
@@ -206,7 +251,7 @@ function Dashboard() {
                     {d.emoji} {d.name}
                   </span>
                   <span className="text-muted-foreground">
-                    {counts[2]} of {children.length} doing well
+                    {doingWell} of {totalChildrenCount} doing well
                   </span>
                 </div>
                 <div className="flex h-4 overflow-hidden rounded-full bg-muted">
