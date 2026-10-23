@@ -77,6 +77,21 @@
   --ring: oklch(0.6 0.12 160);
   --shadow-soft: 0 1px 2px oklch(0.4 0.04 160 / 0.05), 0 6px 20px -8px oklch(0.4 0.04 160 / 0.12);
   --shadow-lift: 0 2px 4px oklch(0.4 0.04 160 / 0.06), 0 18px 40px -14px oklch(0.4 0.06 160 / 0.25);
+
+  /* VikasSetu Recommendations & Calm Design Tokens */
+  --bg-page: #FAF7EF;
+  --bg-section: #F4EFE3;
+  --accent-soft: #DCE9DD;
+  --brand: #193F32;
+  --attention: #DF806B;
+  --border: #E7DFD1;
+  --text: #26332D;
+  --text-muted: #57655B; /* Darkened from #778278 for 5.2:1 accessible contrast against #FAF7EF */
+  --card-bg: #FFFDF8;
+  --shadow-warm-xs: 0 1px 2px rgba(25, 63, 50, 0.06);
+  --shadow-warm-sm: 0 4px 12px -2px rgba(25, 63, 50, 0.08);
+  --radius-card: 12px;
+  --radius-btn: 10px;
 }
 
 @layer base {

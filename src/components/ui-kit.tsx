@@ -40,24 +40,11 @@ export function PageHeader({
   );
 }
 
+import { ChildAvatar } from "./ChildAvatar";
+
 export function Avatar({ child, size = "md" }: { child: Child; size?: "sm" | "md" | "lg" }) {
-  const s =
-    size === "lg"
-      ? "h-20 w-20 text-5xl"
-      : size === "sm"
-        ? "h-10 w-10 text-2xl"
-        : "h-14 w-14 text-3xl";
-  return (
-    <div
-      className={cn(
-        "wiggle flex shrink-0 items-center justify-center rounded-full ring-4 ring-card shadow-soft",
-        toneBg[child.tone],
-        s,
-      )}
-    >
-      {child.avatar}
-    </div>
-  );
+  const mappedSize = size === "lg" ? "xl" : size === "sm" ? "sm" : "md";
+  return <ChildAvatar child={child} size={mappedSize} />;
 }
 
 export function LevelDots({ score, tone = "primary" }: { score: Score; tone?: Tone }) {
@@ -195,7 +182,9 @@ export function SyncStatusBadge({
         {isSyncing ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-soft text-teal px-2.5 py-1 font-bold border border-teal/30">
             <RefreshCw className="h-3.5 w-3.5 animate-spin text-teal" aria-hidden="true" />
-            <span>Syncing {totalUnsynced} trial{totalUnsynced === 1 ? "" : "s"}...</span>
+            <span>
+              Syncing {totalUnsynced} trial{totalUnsynced === 1 ? "" : "s"}...
+            </span>
           </span>
         ) : failedCount > 0 ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-coral-soft text-coral px-2.5 py-1 font-bold border border-coral/30">
@@ -207,7 +196,9 @@ export function SyncStatusBadge({
         ) : pendingCount > 0 ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-sun-soft text-foreground px-2.5 py-1 font-bold border border-sun/50">
             <RefreshCw className="h-3.5 w-3.5 shrink-0 text-sun-foreground" aria-hidden="true" />
-            <span>{pendingCount} offline trial{pendingCount === 1 ? "" : "s"} waiting</span>
+            <span>
+              {pendingCount} offline trial{pendingCount === 1 ? "" : "s"} waiting
+            </span>
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-soft text-primary px-2.5 py-1 font-bold border border-primary/30">

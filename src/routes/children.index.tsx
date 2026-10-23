@@ -3,7 +3,8 @@ import { useState } from "react";
 import { Search, Plus, X } from "lucide-react";
 import { useStore, isPresentToday } from "@/lib/store";
 import { avgLevel, domainOf, strongestDomain, weakestDomain } from "@/lib/data";
-import { Avatar, PageHeader } from "@/components/ui-kit";
+import { PageHeader } from "@/components/ui-kit";
+import { ChildAvatar } from "@/components/ChildAvatar";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/children/")({
@@ -117,7 +118,7 @@ function ChildrenPage() {
               className="card-soft tilt shine block p-5"
             >
               <div className="flex items-start gap-3">
-                <Avatar child={ch} />
+                <ChildAvatar child={ch} />
                 <div className="flex-1">
                   <p className="font-display text-xl font-bold">{ch.name}</p>
                   <p className="text-sm text-muted-foreground">
@@ -136,15 +137,11 @@ function ChildrenPage() {
               <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
                 <div className="rounded-xl bg-primary-soft p-3">
                   <p className="text-xs font-bold text-muted-foreground">Strongest</p>
-                  <p className="font-bold">
-                    {strong ? `${strong.emoji} ${strong.short}` : "—"}
-                  </p>
+                  <p className="font-bold">{strong ? `${strong.emoji} ${strong.short}` : "—"}</p>
                 </div>
                 <div className="rounded-xl bg-sun-soft p-3">
                   <p className="text-xs font-bold text-muted-foreground">Needs attention</p>
-                  <p className="font-bold">
-                    {weak ? `${weak.emoji} ${weak.short}` : "—"}
-                  </p>
+                  <p className="font-bold">{weak ? `${weak.emoji} ${weak.short}` : "—"}</p>
                 </div>
               </div>
             </Link>
