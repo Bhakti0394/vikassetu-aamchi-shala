@@ -24,8 +24,8 @@ function NotFoundComponent() {
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold">404</h1>
         <p className="mt-2 text-muted-foreground">This page doesn't exist.</p>
-        <Link to="/" className="btn btn-primary mt-6">
-          Go home
+        <Link to="/dashboard" className="btn btn-primary mt-6">
+          Go to Dashboard
         </Link>
       </div>
     </div>
@@ -42,7 +42,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
       <div>
         <h1 className="text-xl font-semibold">This page didn't load</h1>
         <p className="mt-2 text-muted-foreground">
-          Something went wrong. Try again or return to the home page.
+          Something went wrong. Try again or return to the dashboard.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -54,8 +54,8 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
           >
             Try again
           </button>
-          <Link to="/" className="btn btn-ghost">
-            Go home
+          <Link to="/dashboard" className="btn btn-ghost">
+            Go to Dashboard
           </Link>
         </div>
       </div>
@@ -115,7 +115,7 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 const NAV = [
-  { to: "/", label: "Dashboard", mobileLabel: "Home", icon: Home },
+  { to: "/dashboard", label: "Dashboard", mobileLabel: "Home", icon: Home },
   { to: "/children", label: "Children", mobileLabel: "Kids", icon: Users },
   { to: "/activities", label: "Activities", mobileLabel: "Play", icon: Shapes },
   { to: "/progress", label: "Progress", mobileLabel: "Record", icon: PenLine },
@@ -127,7 +127,9 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isCurrent = (to: (typeof NAV)[number]["to"]) =>
-    to === "/" ? pathname === "/" : pathname.startsWith(to);
+    pathname === to || pathname.startsWith(to + "/");
+
+  const isLandingPage = pathname === "/";
 
   useEffect(() => {
     // Initialize persistent IndexedDB offline queue on application startup
@@ -143,12 +145,26 @@ function RootComponent() {
     };
   }, []);
 
+  if (isLandingPage) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <StoreProvider>
+          <Outlet />
+        </StoreProvider>
+      </QueryClientProvider>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <StoreProvider>
         <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text)] lg:flex">
           <aside className="border-b border-[var(--border)] bg-[var(--bg-section)] lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r">
-            <div className="flex min-h-16 items-center gap-3 px-4 py-3 sm:px-5 lg:py-7">
+            <Link
+              to="/"
+              title="Return to Landing Page"
+              className="flex min-h-16 items-center gap-3 px-4 py-3 sm:px-5 lg:py-7 hover:opacity-90 transition-opacity"
+            >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[var(--brand)] text-xl text-[#FAF7EF] shadow-xs">
                 🌱
               </div>
@@ -158,7 +174,7 @@ function RootComponent() {
                 </p>
                 <p className="text-xs text-[var(--text-muted)]">Aamchi Shala</p>
               </div>
-            </div>
+            </Link>
             <nav
               aria-label="Main navigation"
               className="hidden gap-1 px-3 pb-3 md:flex md:flex-wrap lg:flex-col lg:flex-nowrap lg:pb-0"

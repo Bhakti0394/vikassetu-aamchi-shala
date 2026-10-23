@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AttendanceRouteImport } from './routes/attendance'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as RecommendationsRouteImport } from './routes/recommendations'
 import { Route as ActivitiesIndexRouteImport } from './routes/activities.index'
@@ -26,6 +27,11 @@ const IndexRoute = IndexRouteImport.update({
 const AttendanceRoute = AttendanceRouteImport.update({
   id: '/attendance',
   path: '/attendance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProgressRoute = ProgressRouteImport.update({
@@ -62,6 +68,7 @@ const ChildrenIdRoute = ChildrenIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/attendance': typeof AttendanceRoute
+  '/dashboard': typeof DashboardRoute
   '/progress': typeof ProgressRoute
   '/recommendations': typeof RecommendationsRoute
   '/activities/$id': typeof ActivitiesIdRoute
@@ -72,6 +79,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/attendance': typeof AttendanceRoute
+  '/dashboard': typeof DashboardRoute
   '/progress': typeof ProgressRoute
   '/recommendations': typeof RecommendationsRoute
   '/activities/$id': typeof ActivitiesIdRoute
@@ -83,6 +91,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/attendance': typeof AttendanceRoute
+  '/dashboard': typeof DashboardRoute
   '/progress': typeof ProgressRoute
   '/recommendations': typeof RecommendationsRoute
   '/activities/$id': typeof ActivitiesIdRoute
@@ -95,6 +104,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/attendance'
+    | '/dashboard'
     | '/progress'
     | '/recommendations'
     | '/activities/$id'
@@ -105,6 +115,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/attendance'
+    | '/dashboard'
     | '/progress'
     | '/recommendations'
     | '/activities/$id'
@@ -115,6 +126,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/attendance'
+    | '/dashboard'
     | '/progress'
     | '/recommendations'
     | '/activities/$id'
@@ -126,6 +138,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AttendanceRoute: typeof AttendanceRoute
+  DashboardRoute: typeof DashboardRoute
   ProgressRoute: typeof ProgressRoute
   RecommendationsRoute: typeof RecommendationsRoute
   ActivitiesIdRoute: typeof ActivitiesIdRoute
@@ -148,6 +161,13 @@ declare module '@tanstack/react-router' {
       path: '/attendance'
       fullPath: '/attendance'
       preLoaderRoute: typeof AttendanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/progress': {
@@ -198,6 +218,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AttendanceRoute: AttendanceRoute,
+  DashboardRoute: DashboardRoute,
   ProgressRoute: ProgressRoute,
   RecommendationsRoute: RecommendationsRoute,
   ActivitiesIdRoute: ActivitiesIdRoute,
