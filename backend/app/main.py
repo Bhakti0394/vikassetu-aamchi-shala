@@ -8,6 +8,7 @@ from app.routers import (
     attendance,
     activity_logs,
     dashboard,
+    recommendations,
 )
 
 app = FastAPI(
@@ -16,7 +17,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configure CORS for local development ports
+# Configure CORS for local development ports and LAN devices
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -29,7 +30,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origin_regex=r"^https?://.*$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,6 +51,7 @@ def root():
             "attendance": "/api/attendance",
             "activity_logs": "/api/activity-logs",
             "dashboard": "/api/dashboard/summary",
+            "recommendations": "/api/recommendations/personalized",
         },
     }
 
@@ -72,3 +74,4 @@ app.include_router(observations.router)
 app.include_router(attendance.router)
 app.include_router(activity_logs.router)
 app.include_router(dashboard.router)
+app.include_router(recommendations.router)

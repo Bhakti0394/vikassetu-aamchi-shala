@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Landing Page Preview — VikasSetu</title>
+  <style>
+
+
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --ivory: #FAF7EF;
+  --paper: #f7efdf;
+  --paper-deep: #efe2cb;
+  --forest: #193e35;
+  --forest-soft: #29584b;
+  --teal: #3e8178;
+  --sage: #dce8d8;
+  --sage-deep: #a9c2aa;
+  --coral: #d9826b;
+  --yellow: #efc96e;
+  --ink: #314d43;
+  --muted: #6d7e72;
+  --line: #d8d6c6;
+  --white: #fffdf7;
+  font-family: "Trebuchet MS", "Avenir Next", Avenir, system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--ivory);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body { margin: 0; min-width: 320px; background: var(--ivory); color: var(--ink); overflow-x: hidden; }
+button, a { font: inherit; }
+button { border: 0; }
+a { color: inherit; text-decoration: none; }
+button:focus-visible, a:focus-visible { outline: 3px solid var(--yellow); outline-offset: 4px; }
+
+.landing-page { min-height: 100vh; overflow: hidden; background: var(--ivory); }
+.site-container { width: min(1360px, calc(100% - 64px)); margin: 0 auto; }
+.section-pad { padding: 104px 0; }
+
+.site-header { position: sticky; top: 0; z-index: 20; background: rgba(252, 247, 236, .94); border-bottom: 1px solid rgba(216, 214, 198, .76); backdrop-filter: blur(12px); box-sizing: border-box; height: 76px; }
+.nav-shell { height: 100%; min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 28px; }
+.brand { display: inline-flex; align-items: center; gap: 10px; color: var(--forest); }
+.brand-mark { display: grid; place-items: center; width: 34px; height: 34px; }
+.brand-mark svg { width: 34px; height: 34px; }
+.brand-copy { display: grid; gap: 1px; line-height: 1; }
+.brand-copy strong { font-family: Georgia, "Times New Roman", serif; font-size: 20px; letter-spacing: -.03em; }
+.brand-copy span { color: var(--teal); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+.primary-nav { display: flex; align-items: center; gap: 24px; color: var(--forest-soft); font-size: 13px; font-weight: 700; }
+.primary-nav a, .nav-login, .footer-links a, .footer-links button { transition: color .2s ease; }
+.primary-nav a:hover, .nav-login:hover, .footer-links a:hover, .footer-links button:hover { color: var(--coral); }
+.nav-login { padding: 6px 0; background: transparent; color: var(--forest-soft); font-size: 13px; font-weight: 700; }
+.menu-toggle { display: none; color: var(--forest); background: transparent; }
+.button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 46px; padding: 0 19px; border: 1.5px solid transparent; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 800; letter-spacing: .01em; transition: transform .2s ease, background .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease; }
+.button:hover { transform: translateY(-2px); }
+.button-small { min-height: 38px; padding: 0 14px; font-size: 12px; }
+.button-primary { background: var(--coral); color: var(--white); border: 1px solid #c96e58; box-shadow: 0 2px 6px rgba(223, 128, 107, 0.25); }
+.button-primary:hover { background: #c96e58; border-color: #b85f49; box-shadow: 0 4px 10px rgba(223, 128, 107, 0.32); }
+.button-dark { background: var(--forest); color: var(--white); border-color: var(--forest); }
+.button-dark:hover { background: var(--teal); border-color: var(--teal); }
+.button-outline-forest { background: transparent; color: var(--forest); border: 1.5px solid var(--forest); box-shadow: none; }
+.button-outline-forest:hover { background: rgba(25, 62, 53, 0.06); border-color: var(--forest); color: var(--forest); }
+.button-quiet { background: transparent; color: var(--forest); border: 1.5px solid var(--line); }
+.button-quiet:hover { border-color: var(--forest); color: var(--forest); background: rgba(25, 62, 53, 0.04); }
+
+.hero-section { min-height: calc(100vh - 76px); min-height: calc(100svh - 76px); display: flex; flex-direction: column; justify-content: space-between; padding: 0; box-sizing: border-box; background: var(--ivory); }
+.hero-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 44fr) minmax(0, 56fr); align-items: center; gap: 40px; padding: 64px 0 52px; }
+.hero-copy { display: flex; flex-direction: column; align-items: flex-start; text-align: left; max-width: 100%; padding-bottom: 0; position: relative; z-index: 2; }
+.eyebrow, .section-kicker { margin: 0 0 18px; color: #193F32; font-size: 12.5px; font-weight: 700; letter-spacing: .12em; line-height: 1.4; text-transform: uppercase; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border: 1px solid rgba(25, 63, 50, 0.12); border-radius: 99px; background: #F4EFE3; color: #193F32; margin-left: 0; }
+.eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--coral); }
+h1, h2, h3, p { margin-top: 0; }
+h1, h2 { color: var(--forest); font-family: Georgia, "Times New Roman", serif; font-weight: 500; }
+h1 { width: 100%; max-width: 620px; margin-bottom: 22px; font-size: clamp(3.4rem, 5.25vw, 4.85rem); line-height: 1.03; letter-spacing: -0.025em; text-align: left; text-wrap: balance; }
+h2 { margin-bottom: 18px; font-size: clamp(39px, 5vw, 59px); line-height: 1.02; letter-spacing: -.045em; }
+h1 em, h2 em { color: var(--coral); font-style: normal; }
+.hero-br { display: block; }
+.hero-lede { width: 100%; max-width: 36ch; margin-bottom: 28px; color: #5F6B62; font-size: 1.38rem; line-height: 1.55; text-align: left; overflow-wrap: break-word; }
+.hero-actions, .cta-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-left: 0; }
+.hero-actions .button { min-height: 56px; padding: 0 24px; font-size: 1.05rem; border-radius: 7px; }
+.trust-note { display: inline-flex; align-items: center; gap: 9px; margin-top: 24px; margin-left: 0; color: var(--forest-soft); font-size: 12.5px; font-weight: 700; text-align: left; }
+.trust-check { display: grid; place-items: center; width: 21px; height: 21px; border-radius: 50%; background: var(--sage); color: var(--forest); }
+.login-message { max-width: 440px; margin: 14px 0 0; color: var(--forest-soft); font-size: 12px; line-height: 1.5; }
+.hero-art { position: relative; min-height: auto; display: flex; align-items: center; justify-content: center; padding: 0; width: 100%; }
+.hero-art-frame { position: relative; width: 100%; max-width: 100%; background: radial-gradient(ellipse 85% 80% at 50% 50%, rgba(220, 233, 221, 0.42) 0%, rgba(244, 239, 227, 0.22) 55%, transparent 75%); border-radius: 20px; transform: none; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.hero-art-frame picture { display: block; width: 100%; }
+.hero-art-frame img { display: block; width: 100%; height: auto; object-fit: contain; mix-blend-mode: multiply; filter: contrast(1.04) brightness(0.97) sepia(0.08) hue-rotate(95deg); -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 5%, #000 95%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 4%, #000 96%, transparent 100%); mask-image: linear-gradient(to right, transparent 0%, #000 5%, #000 95%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 4%, #000 96%, transparent 100%); -webkit-mask-composite: source-in; mask-composite: intersect; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
+.hero-rule { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 24px 0; border-top: 1px solid var(--line); color: #5F6B62; font-family: Georgia, "Times New Roman", serif; font-size: 15.5px; font-style: italic; }
+.rule-line { flex: 1; border-top: 1.5px dotted #D8CFBE; }
+.rule-leaf { width: 28px; flex-shrink: 0; margin-left: -2px; }
+.rule-leaf svg { display: block; width: 100%; height: auto; }
+
+.section-intro { position: relative; }
+.split-intro { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, .7fr); align-items: end; gap: 80px; }
+.split-intro > p, .split-intro > div:last-child > p, .centered-intro > p { color: var(--muted); font-size: 15px; line-height: 1.75; }
+.centered-intro { max-width: 700px; margin: 0 auto 51px; text-align: center; }
+.centered-intro .section-kicker { margin-bottom: 14px; }
+.centered-intro h2 { margin-bottom: 18px; }
+.moments-section { background: var(--paper); border-top: 1px solid #eee2d0; border-bottom: 1px solid #eee2d0; }
+.moments-section h2 { max-width: 540px; }
+.benefit-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 59px; border-top: 1px solid #d8d4bf; border-bottom: 1px solid #d8d4bf; }
+.benefit-item { min-height: 238px; padding: 28px 28px 28px 0; border-right: 1px solid #d8d4bf; }
+.benefit-item + .benefit-item { padding-left: 28px; }
+.benefit-item:last-child { border-right: 0; }
+.benefit-topline { display: flex; align-items: center; justify-content: space-between; margin-bottom: 36px; color: var(--teal); }
+.benefit-topline > span { color: #91a69b; font-family: Georgia, "Times New Roman", serif; font-size: 13px; }
+.benefit-item h3 { max-width: 170px; margin-bottom: 11px; color: var(--forest); font-family: Georgia, "Times New Roman", serif; font-size: 22px; font-weight: 500; line-height: 1.15; }
+.benefit-item p { max-width: 215px; margin-bottom: 16px; color: var(--muted); font-size: 13px; line-height: 1.65; }
+.benefit-underline { display: block; width: 31px; border-top: 3px solid var(--coral); }
+.accent-sage .benefit-underline { border-color: var(--sage-deep); }
+.accent-yellow .benefit-underline { border-color: var(--yellow); }
+.accent-teal .benefit-underline { border-color: var(--teal); }
+
+.domains-section { background: var(--ivory); }
+.domain-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 13px; }
+.domain-card { position: relative; min-height: 298px; display: flex; flex-direction: column; justify-content: space-between; padding: 21px 17px 18px; border: 1px solid rgba(41, 88, 75, .16); border-radius: 10px; overflow: hidden; transition: transform .2s ease, box-shadow .2s ease; }
+.domain-card:hover { transform: translateY(-5px); box-shadow: 0 12px 22px rgba(41, 88, 75, .08); }
+.domain-coral { background: #f5ddd2; }
+.domain-yellow { background: #f8edc9; }
+.domain-sage { background: #e0ecdd; }
+.domain-teal { background: #d7ebe5; }
+.domain-paper { background: #f4ead9; }
+.domain-art { min-height: 108px; display: grid; place-items: center; }
+.domain-art svg { width: 100%; max-width: 145px; height: auto; }
+.domain-card h3 { max-width: 150px; margin-bottom: 8px; color: var(--forest); font-family: Georgia, "Times New Roman", serif; font-size: 20px; font-weight: 500; line-height: 1.1; }
+.domain-card p { margin-bottom: 0; color: var(--forest-soft); font-size: 12px; line-height: 1.55; }
+.card-arrow { position: absolute; right: 14px; bottom: 17px; display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid rgba(41, 88, 75, .3); border-radius: 50%; color: var(--forest); }
+
+.activities-section { background: #f0e7d5; border-top: 1px solid #e3d9c5; border-bottom: 1px solid #e3d9c5; }
+.activity-heading { margin-bottom: 48px; }
+.activity-heading h2 { margin-bottom: 0; }
+.activity-heading > div:last-child { align-self: end; }
+.text-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; color: var(--forest); border-bottom: 1px solid var(--forest); font-size: 13px; font-weight: 800; transition: color .2s ease, border-color .2s ease; }
+.text-link:hover { color: var(--coral); border-color: var(--coral); }
+.activity-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+.activity-card { position: relative; min-height: 330px; display: flex; flex-direction: column; border: 1px solid rgba(41, 88, 75, .18); border-radius: 9px; overflow: hidden; background: var(--white); transition: transform .2s ease, box-shadow .2s ease; }
+.activity-card:hover { transform: translateY(-5px); box-shadow: 0 14px 24px rgba(41, 88, 75, .09); }
+.activity-coral .activity-visual { background: #f3d6ca; }
+.activity-yellow .activity-visual { background: #faebbf; }
+.activity-sage .activity-visual { background: #deebda; }
+.activity-teal .activity-visual { background: #d7ebe5; }
+.activity-visual { min-height: 146px; display: grid; place-items: center; }
+.activity-visual svg { width: 82%; max-width: 150px; height: auto; }
+.activity-content { padding: 18px 18px 38px; }
+.activity-domain { margin-bottom: 8px; color: var(--teal); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.activity-content h3 { margin-bottom: 8px; color: var(--forest); font-family: Georgia, "Times New Roman", serif; font-size: 23px; font-weight: 500; }
+.activity-content p:last-child { margin-bottom: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.activity-link-note { position: absolute; right: 17px; bottom: 15px; display: inline-flex; align-items: center; gap: 5px; color: var(--forest-soft); font-size: 10px; font-weight: 800; }
+.activity-link-note svg { color: var(--teal); }
+.data-note { display: flex; gap: 9px; max-width: 720px; margin: 31px 0 0; color: #718177; font-size: 11px; line-height: 1.55; }
+.data-note-mark { flex: 0 0 auto; display: grid; place-items: center; width: 17px; height: 17px; border: 1px solid #9aafa1; border-radius: 50%; color: var(--teal); font-family: Georgia, serif; font-style: italic; font-weight: 700; }
+
+.gallery-section { background: var(--ivory); }
+.gallery-layout { display: grid; grid-template-columns: .85fr 1.15fr; align-items: center; gap: 70px; }
+.gallery-copy { max-width: 380px; }
+.gallery-copy h2 { margin-bottom: 22px; }
+.gallery-copy > p:not(.section-kicker) { color: var(--muted); font-size: 15px; line-height: 1.75; }
+.gallery-caption { display: flex; align-items: center; gap: 10px; margin-top: 30px; color: var(--teal); font-size: 11px; font-style: italic; }
+.caption-line { width: 32px; border-top: 1px solid var(--coral); }
+.artwork-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 23px; padding: 17px 17px 9px; }
+.artwork-sheet { position: relative; min-height: 213px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 25px 18px 13px; border: 1px solid #e5d6bf; background: #fffaf0; box-shadow: 0 12px 20px rgba(90, 74, 49, .12); }
+.artwork-sheet svg { width: min(100%, 165px); height: 133px; }
+.artwork-sheet figcaption { align-self: flex-start; margin-top: 6px; color: #6e756d; font-family: Georgia, "Times New Roman", serif; font-size: 12px; font-style: italic; }
+.artwork-one { transform: rotate(-2.2deg); }
+.artwork-two { transform: rotate(2.2deg); }
+.artwork-three { transform: rotate(1.3deg); }
+.artwork-four { transform: rotate(-1.5deg); }
+.sheet-tape { position: absolute; top: -11px; left: calc(50% - 28px); width: 56px; height: 20px; background: rgba(239, 201, 110, .7); transform: rotate(-3deg); }
+
+.how-section { background: var(--sage); border-top: 1px solid #cbdcc9; border-bottom: 1px solid #cbdcc9; }
+.how-intro { margin-bottom: 62px; }
+.steps-track { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 38px; }
+.track-line { position: absolute; top: 79px; left: 14%; right: 14%; border-top: 2px dashed #7fa18f; }
+.step-card { position: relative; z-index: 1; text-align: center; }
+.step-number { display: grid; place-items: center; width: 37px; height: 37px; margin: 0 auto 7px; border: 1px solid var(--forest-soft); border-radius: 50%; background: var(--sage); color: var(--forest); font-family: Georgia, serif; font-size: 12px; font-weight: 700; }
+.step-illustration { display: grid; place-items: center; height: 137px; }
+.step-illustration svg { width: 135px; height: auto; }
+.step-card h3 { margin-bottom: 9px; color: var(--forest); font-family: Georgia, "Times New Roman", serif; font-size: 25px; font-weight: 500; }
+.step-card p { max-width: 280px; margin: 0 auto; color: var(--forest-soft); font-size: 13px; line-height: 1.65; }
+
+.cta-section { padding-top: 93px; padding-bottom: 93px; background: var(--ivory); }
+.cta-panel { display: grid; grid-template-columns: .55fr 1.45fr; align-items: center; gap: 40px; padding: 62px 78px; border-radius: 12px; background: var(--forest); color: #edf4e8; overflow: hidden; }
+.cta-illustration { display: grid; place-items: center; }
+.cta-illustration svg { width: min(100%, 205px); height: auto; }
+.cta-copy h2 { max-width: 550px; margin-bottom: 14px; color: var(--ivory); }
+.cta-copy h2 em { color: var(--yellow); }
+.cta-copy > p:not(.section-kicker) { max-width: 480px; margin-bottom: 28px; color: #c3d4c5; font-size: 15px; line-height: 1.7; }
+.cta-copy .button-quiet { border-color: #719383; color: var(--ivory); }
+.cta-copy .button-quiet:hover { border-color: var(--yellow); color: var(--yellow); background: transparent; }
+.cta-copy .login-message { color: #c3d4c5; }
+
+.site-footer { padding: 65px 0 23px; background: var(--paper); border-top: 1px solid #eadfcf; }
+.footer-grid { display: grid; grid-template-columns: 1.6fr .7fr .7fr; gap: 70px; padding-bottom: 59px; }
+.brand-footer { margin-bottom: 21px; }
+.footer-copy { max-width: 310px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+.footer-heading { margin-bottom: 16px; color: var(--forest); font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.footer-links { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.footer-links a, .footer-links button { padding: 0; background: transparent; color: var(--muted); font-size: 13px; text-align: left; cursor: pointer; }
+.footer-bottom { display: flex; justify-content: space-between; gap: 20px; padding-top: 18px; border-top: 1px solid #d8d4bf; color: #8a948b; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; }
+
+.rise-in { animation: rise-in .55s ease both; }
+@keyframes rise-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 1050px) {
+  .site-container { width: min(100% - 40px, 980px); }
+  .hero-grid { grid-template-columns: minmax(0, 44fr) minmax(0, 56fr); gap: 28px; padding: 48px 0 36px; }
+  .hero-art-frame { width: 100%; transform: none; }
+  h1 { font-size: clamp(2.4rem, 4.4vw, 3.2rem); max-width: 440px; margin-bottom: 18px; }
+  .hero-lede { font-size: 1.15rem; max-width: 36ch; margin-bottom: 22px; }
+  .hero-actions .button { min-height: 50px; font-size: 0.98rem; padding: 0 18px; }
+  .primary-nav { gap: 15px; }
+  .domain-grid { grid-template-columns: repeat(3, 1fr); }
+  .domain-card:last-child { grid-column: span 3; min-height: 235px; }
+  .domain-card:last-child .domain-art { min-height: 75px; }
+  .cta-panel { padding: 52px; }
+}
+
+@media (max-width: 900px) {
+  .site-header { height: auto; }
+  .nav-shell { min-height: 68px; }
+  .hero-section { min-height: calc(100vh - 68px); min-height: calc(100svh - 68px); display: flex; flex-direction: column; justify-content: flex-start; padding: 36px 0 16px; }
+  .hero-grid { display: flex; flex-direction: column; align-items: stretch; flex: initial; min-height: 0; gap: 28px; padding: 0 0 20px; }
+  .hero-copy { max-width: 100%; padding-bottom: 0; }
+  .hero-br { display: inline; }
+  h1 { max-width: 560px; font-size: clamp(2.5rem, 7.5vw, 3.6rem); margin-bottom: 18px; }
+  .hero-lede { max-width: 42ch; font-size: 1.2rem; margin-bottom: 22px; }
+  .hero-actions .button { min-height: 52px; font-size: 1.02rem; }
+  .hero-art { width: 100%; min-height: auto; padding: 0; justify-content: center; }
+  .hero-art-frame { width: 100%; max-width: 620px; margin: 0 auto; transform: none; }
+  .hero-rule { margin-top: 16px; padding: 20px 0; }
+}
+
+@media (max-width: 760px) {
+  .site-container { width: min(100% - 34px, 620px); }
+  .site-header { backdrop-filter: none; }
+  .nav-shell { min-height: 68px; }
+  .menu-toggle { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 50%; }
+  .primary-nav { position: absolute; top: calc(100% + 1px); left: 0; right: 0; display: none; flex-direction: column; align-items: stretch; gap: 0; padding: 13px 17px 19px; border-bottom: 1px solid var(--line); background: var(--ivory); box-shadow: 0 10px 20px rgba(41, 88, 75, .07); }
+  .primary-nav.is-open { display: flex; }
+  .primary-nav a, .nav-login { padding: 13px 5px; border-bottom: 1px solid #e6e2d5; text-align: left; }
+  .primary-nav .button { margin-top: 14px; }
+  .hero-section { padding-top: 28px; padding-bottom: 16px; }
+  .hero-grid { gap: 24px; padding-bottom: 16px; }
+  .eyebrow { font-size: 11px; letter-spacing: .09em; padding: 5px 11px; max-width: 100%; white-space: normal; }
+  .hero-br { display: inline; }
+  h1 { max-width: 520px; font-size: clamp(2.2rem, 8.5vw, 3.2rem); }
+  .hero-lede { font-size: 1.1rem; max-width: 100%; }
+  .hero-actions .button { min-height: 50px; font-size: 0.98rem; }
+  .hero-art { min-height: auto; padding: 0; }
+  .hero-art-frame { width: 100%; max-width: 100%; padding: 0; transform: none; }
+  .hero-art-frame img { max-height: none; }
+  .hero-rule { gap: 9px; font-size: 13px; padding: 16px 0; }
+  .hero-rule > span:first-child { max-width: 215px; }
+  .split-intro, .gallery-layout { display: block; }
+  .split-intro > p, .split-intro > div:last-child > p { margin-top: 22px; }
+  .section-pad { padding: 75px 0; }
+  .benefit-grid { grid-template-columns: repeat(2, 1fr); margin-top: 37px; }
+  .benefit-item { min-height: 225px; padding: 22px 18px 22px 0; border-right: 0; border-bottom: 1px solid #d8d4bf; }
+  .benefit-item:nth-child(odd) { padding-right: 17px; border-right: 1px solid #d8d4bf; }
+  .benefit-item:nth-child(even) { padding-left: 17px; }
+  .benefit-item:nth-last-child(-n + 2) { border-bottom: 0; }
+  .benefit-topline { margin-bottom: 24px; }
+  .benefit-item h3 { font-size: 19px; }
+  .benefit-item p { font-size: 12px; }
+  .domain-grid { grid-template-columns: repeat(2, 1fr); }
+  .domain-card:last-child { grid-column: span 2; min-height: 260px; }
+  .domain-card:last-child .domain-art { min-height: 116px; }
+  .activity-heading { margin-bottom: 31px; }
+  .activity-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .activity-card { min-height: 315px; }
+  .activity-content { padding: 15px 14px 37px; }
+  .activity-content h3 { font-size: 20px; }
+  .activity-visual { min-height: 125px; }
+  .data-note { margin-top: 24px; }
+  .gallery-copy { max-width: none; margin-bottom: 34px; }
+  .artwork-grid { gap: 15px; padding: 10px 7px 7px; }
+  .artwork-sheet { min-height: 180px; padding: 17px 11px 11px; }
+  .artwork-sheet svg { height: 105px; }
+  .artwork-sheet figcaption { font-size: 10px; }
+  .steps-track { grid-template-columns: 1fr; gap: 28px; }
+  .track-line { top: 40px; bottom: 40px; left: 50%; right: auto; height: calc(100% - 80px); border-top: 0; border-left: 2px dashed #7fa18f; }
+  .step-card { display: grid; grid-template-columns: 55px 1fr; grid-template-rows: auto auto; align-items: center; column-gap: 15px; text-align: left; }
+  .step-number { grid-row: 1 / span 2; margin: 0; }
+  .step-illustration { grid-column: 2; grid-row: 1; justify-content: start; height: 68px; }
+  .step-illustration svg { width: 83px; }
+  .step-card h3 { grid-column: 2; grid-row: 2; margin: -5px 0 7px; font-size: 22px; }
+  .step-card p { grid-column: 2; grid-row: 3; margin: 0; font-size: 12px; }
+  .cta-section { padding: 67px 0; }
+  .cta-panel { grid-template-columns: 1fr; gap: 23px; padding: 39px 26px; }
+  .cta-illustration { justify-content: start; }
+  .cta-illustration svg { width: 130px; }
+  .cta-copy h2 { font-size: 43px; }
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 39px 24px; padding-bottom: 41px; }
+  .footer-grid > div:first-child { grid-column: span 2; }
+  .footer-bottom { display: block; line-height: 1.9; }
+  .footer-bottom span { display: block; }
+}
+
+@media (max-width: 440px) {
+  .site-container { width: min(100% - 24px, 400px); }
+  .eyebrow { font-size: 10px; letter-spacing: .08em; padding: 5px 10px; line-height: 1.3; }
+  .hero-actions { flex-direction: column; align-items: stretch; width: 100%; gap: 10px; }
+  .hero-actions .button { width: 100%; min-height: 52px; font-size: 1rem; }
+  h1 { font-size: clamp(2rem, 8.8vw, 2.6rem); }
+  .hero-lede { font-size: 1.05rem; }
+  .hero-rule > span:first-child { max-width: 178px; }
+  .domain-card { min-height: 306px; padding-left: 13px; padding-right: 13px; }
+  .domain-card:last-child { min-height: 280px; }
+  .activity-card { min-height: 340px; }
+  .activity-grid { gap: 9px; }
+  .activity-link-note { right: 11px; }
+  .artwork-grid { gap: 12px; }
+  .artwork-sheet { min-height: 163px; }
+  .artwork-sheet svg { height: 88px; }
+  .artwork-sheet figcaption { font-size: 9px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .rise-in { animation: none !important; opacity: 1 !important; transform: none !important; }
+}
+
+
+/* Fallback reset and layout helpers */
+.landing-page { min-height: 100vh; overflow-x: hidden; background: var(--ivory); }
+img { max-width: 100%; height: auto; }
+svg { display: block; }
+  </style>
+</head>
+<body>
+  <div class="landing-page">
+    <header class="site-header">
+      <div class="site-container nav-shell">
+        <a class="brand" href="#hero">
+          <span class="brand-mark"><svg viewBox="0 0 42 42" aria-hidden="true" focusable="false"><path d="M20.6 32.7C13.1 28.8 10.1 20.8 13.5 12.1c6.6.2 12.3 4.7 13.2 11.2.5 3.2-.9 6.4-3.4 9.4Z" fill="#a9c2aa" stroke="#193e35" stroke-width="1.8" /><path d="M18.2 30.6c2.1-5 4.8-9.2 8.7-13.4M18.8 32.4c-1.1 2.5-2.2 4.1-4.1 5.5" fill="none" stroke="#193e35" stroke-width="1.8" stroke-linecap="round" /><path d="M28.4 9.8c4.7 2.7 6.6 7.4 5 12.2-4.3.2-8.1-2.5-9.1-6.6-.5-2.2 1-4.1 4.1-5.6Z" fill="#efc96e" stroke="#193e35" stroke-width="1.8" /></svg></span>
+          <span class="brand-copy">
+            <strong>VikasSetu</strong>
+            <span>Aamchi Shala</span>
+          </span>
+        </a>
+        <button class="menu-toggle" type="button" aria-label="Toggle navigation" onclick="document.getElementById('primary-navigation').classList.toggle('is-open')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+        </button>
+        <nav id="primary-navigation" class="primary-nav" aria-label="Primary navigation">
+          <a href="#moments">Why VikasSetu</a>
+          <a href="#domains">Learning paths</a>
+          <a href="#activities">Activities</a>
+          <a href="#how-it-works">How it works</a>
+          <button class="nav-login" type="button">Log in</button>
+          <a class="button button-small button-dark" href="#hero">
+            Get started <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero-section" id="hero" aria-labelledby="hero-title">
+        <div class="site-container hero-grid">
+          <div class="hero-copy rise-in">
+            <p class="eyebrow"><span class="eyebrow-dot"></span> An observation-led companion for early learning</p>
+            <h1 id="hero-title">Small steps build <em>big dreams.</em></h1>
+            <p class="hero-lede">Every child learns differently. Give every learner the attention, activities, and encouragement they need to grow.</p>
+            <div class="hero-actions">
+              <button class="button button-primary" type="button">Get started <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+              <a class="button button-quiet" href="#activities">Explore activities <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></a>
+            </div>
+            <div class="trust-note"><span class="trust-check"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Made for preschool and Anganwadi teachers.</div>
+          </div>
+          <div class="hero-art rise-in" aria-label="A teacher speaking to a classroom of attentive young children">
+            <div class="hero-art-frame">
+              <picture>
+                <source srcset="./client/public/classroom-hero-sketch.webp" type="image/webp" />
+                <img src="./client/public/classroom-hero-sketch.png" alt="A teacher speaking to a classroom of attentive young children" width="1086" height="712" loading="eager" fetchpriority="high" />
+              </picture>
+            </div>
+          </div>
+        </div>
+        <div class="hero-rule site-container">
+          <span>For the noticing, the trying, and the tiny breakthroughs</span>
+          <span class="rule-line"></span>
+          <span class="rule-leaf"><svg viewBox="0 0 120 100" aria-hidden="true" focusable="false"><path d="M21 79c19-30 42-49 77-58-3 34-25 57-62 64" fill="#a9c2aa" stroke="#314d43" stroke-width="3" stroke-linejoin="round" /><path d="M25 76c24-19 42-34 68-50M51 51l-4-20M63 42l8-19M38 64l-17-2" fill="none" stroke="#314d43" stroke-width="2.3" stroke-linecap="round" /></svg></span>
+        </div>
+      </section>
+
+      <section class="moments-section section-pad" id="moments" aria-labelledby="moments-title">
+        <div class="site-container">
+          <div class="section-intro split-intro">
+            <div>
+              <p class="section-kicker">A little more room to notice</p>
+              <h2 id="moments-title">Made for the moments <em>that matter.</em></h2>
+            </div>
+            <p>Every day brings new opportunities to notice, encourage, and support a child’s learning. VikasSetu keeps the useful context close, while you stay in the lead.</p>
+          </div>
+          <div class="benefit-grid">
+            <article class="benefit-item accent-coral">
+              <div class="benefit-topline"><span>01</span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></div>
+              <h3>Understand every child</h3>
+              <p>Keep child profiles and recorded observations together, so the small details that matter stay close at hand.</p>
+              <span class="benefit-underline"></span>
+            </article>
+            <article class="benefit-item accent-sage">
+              <div class="benefit-topline"><span>02</span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg></div>
+              <h3>Keep the classroom organised</h3>
+              <p>Bring classroom information and attendance into one calm, practical place for the day-to-day work.</p>
+              <span class="benefit-underline"></span>
+            </article>
+            <article class="benefit-item accent-yellow">
+              <div class="benefit-topline"><span>03</span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg></div>
+              <h3>Find meaningful activities</h3>
+              <p>When relevant child information is available, activity suggestions can help you choose a thoughtful next step.</p>
+              <span class="benefit-underline"></span>
+            </article>
+            <article class="benefit-item accent-teal">
+              <div class="benefit-topline"><span>04</span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></div>
+              <h3>Notice progress over time</h3>
+              <p>Use observations and activity-trial notes to reflect on what a child is exploring and where to go next.</p>
+              <span class="benefit-underline"></span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="domains-section section-pad" id="domains" aria-labelledby="domains-title">
+        <div class="site-container">
+          <div class="section-intro centered-intro">
+            <p class="section-kicker">A wider view of learning</p>
+            <h2 id="domains-title">Many ways to learn. <em>Every child’s own journey.</em></h2>
+            <p>Learning is not one straight line. These five familiar paths make it easier to notice what is inviting a child in today.</p>
+          </div>
+          <div class="domain-grid">
+            <article class="domain-card domain-coral">
+              <div class="domain-art"><svg viewBox="0 0 150 100" aria-hidden="true" focusable="false"><g stroke="#314d43" stroke-width="2.5" stroke-linejoin="round"><rect x="8" y="17" width="38" height="58" rx="4" fill="#d9826b" transform="rotate(-4 8 17)" /><rect x="55" y="12" width="38" height="58" rx="4" fill="#efc96e" transform="rotate(5 55 12)" /><rect x="101" y="20" width="38" height="58" rx="4" fill="#a9c2aa" transform="rotate(-3 101 20)" /></g><g fill="#193e35" font-family="Georgia, serif" font-size="28" font-weight="700" text-anchor="middle"><text x="28" y="56">A</text><text x="74" y="51">B</text><text x="120" y="59">C</text></g></svg></div>
+              <div><h3>Alphabet & Language</h3><p>Build a love of words through sounds, letters, conversations, and early mark-making.</p></div>
+              <span class="card-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
+            </article>
+            <article class="domain-card domain-yellow">
+              <div class="domain-art"><svg viewBox="0 0 150 100" aria-hidden="true" focusable="false"><path d="M17 72c17-24 44-45 86-53" fill="none" stroke="#314d43" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 8" /><g fill="#3e8178" stroke="#314d43" stroke-width="2.5"><rect x="16" y="36" width="30" height="30" rx="4" transform="rotate(-9 16 36)" /><rect x="58" y="27" width="30" height="30" rx="4" transform="rotate(5 58 27)" fill="#d9826b" /><rect x="100" y="17" width="30" height="30" rx="4" transform="rotate(-4 100 17)" fill="#efc96e" /></g><g fill="#f7efdf" font-family="Georgia, serif" font-size="21" font-weight="700" text-anchor="middle"><text x="31" y="58">1</text><text x="73" y="49">2</text><text x="115" y="39">3</text></g></svg></div>
+              <div><h3>Numbers & Counting</h3><p>Make quantity visible with counting, matching, comparing, and everyday number talk.</p></div>
+              <span class="card-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
+            </article>
+            <article class="domain-card domain-sage">
+              <div class="domain-art"><svg viewBox="0 0 150 105" aria-hidden="true" focusable="false"><circle cx="27" cy="52" r="19" fill="#d9826b" stroke="#314d43" stroke-width="3" /><rect x="53" y="31" width="38" height="38" fill="#efc96e" stroke="#314d43" stroke-width="3" transform="rotate(14 72 50)" /><path d="m125 27 23 45H102Z" fill="#a9c2aa" stroke="#314d43" stroke-width="3" stroke-linejoin="round" /><path d="M12 87c34 6 77 6 126-1" fill="none" stroke="#314d43" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 7" /></svg></div>
+              <div><h3>Colours & Shapes</h3><p>Notice patterns, colours, lines, and shapes as children make sense of the world around them.</p></div>
+              <span class="card-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
+            </article>
+            <article class="domain-card domain-teal">
+              <div class="domain-art"><svg viewBox="0 0 150 105" aria-hidden="true" focusable="false"><path d="M23 69c18-17 45-24 68-15 7 3 9 10 3 15-8 7-19 4-29 2-15-3-26 3-42 7Z" fill="#d9826b" stroke="#314d43" stroke-width="3" stroke-linejoin="round" /><circle cx="43" cy="61" r="5" fill="#efc96e" stroke="#314d43" stroke-width="2" /><circle cx="61" cy="57" r="5" fill="#a9c2aa" stroke="#314d43" stroke-width="2" /><circle cx="78" cy="60" r="5" fill="#efc96e" stroke="#314d43" stroke-width="2" /><path d="M101 70 126 20" fill="none" stroke="#7a5038" stroke-width="6" stroke-linecap="round" /><path d="m119 27 11-12 5 11-11 11" fill="#3e8178" stroke="#314d43" stroke-width="2.5" stroke-linejoin="round" /></svg></div>
+              <div><h3>Art & Creativity</h3><p>Leave room for experimenting with materials, movement, mark-making, and imagination.</p></div>
+              <span class="card-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
+            </article>
+            <article class="domain-card domain-paper">
+              <div class="domain-art"><svg viewBox="0 0 150 110" aria-hidden="true" focusable="false"><path d="M10 30c19-10 39-10 64 1v61c-24-10-45-10-64-1ZM140 30c-19-10-39-10-64 1v61c24-10 45-10 64-1Z" fill="#f7efdf" stroke="#314d43" stroke-width="3" stroke-linejoin="round" /><path d="M74 31v61M24 48c12-5 27-5 42 1M126 48c-12-5-27-5-42 1" fill="none" stroke="#3e8178" stroke-width="2" stroke-linecap="round" /><path d="M33 69c7-10 15-10 22 0" fill="none" stroke="#d9826b" stroke-width="3" stroke-linecap="round" /><circle cx="111" cy="68" r="10" fill="#efc96e" stroke="#d9826b" stroke-width="2" /><path d="M104 69h14M111 62v13" stroke="#314d43" stroke-width="2" stroke-linecap="round" /></svg></div>
+              <div><h3>Stories, Habits & Games</h3><p>Grow language, routines, social learning, and joy through stories, songs, and shared play.</p></div>
+              <span class="card-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="activities-section section-pad" id="activities" aria-labelledby="activities-title">
+        <div class="site-container">
+          <div class="section-intro split-intro activity-heading">
+            <div><p class="section-kicker">Open-ended, everyday learning</p><h2 id="activities-title">Learning through <em>play.</em></h2></div>
+            <div><p>Discover simple invitations that turn everyday moments into opportunities to explore, practise, and create.</p><a href="#activities" class="text-link">Explore all activities <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a></div>
+          </div>
+          <div class="activity-grid">
+            <article class="activity-card activity-coral">
+              <div class="activity-visual"><svg viewBox="0 0 140 110" aria-hidden="true" focusable="false"><path d="M18 80h104" stroke="#314d43" stroke-width="3" stroke-linecap="round" /><g stroke="#314d43" stroke-width="2.5" stroke-linejoin="round"><rect x="18" y="54" width="34" height="26" fill="#d9826b" /><rect x="53" y="34" width="34" height="46" fill="#efc96e" /><rect x="88" y="49" width="34" height="31" fill="#3e8178" /><circle cx="35" cy="67" r="6" fill="#f7efdf" /><circle cx="70" cy="47" r="6" fill="#f7efdf" /><circle cx="105" cy="64" r="6" fill="#f7efdf" /></g></svg></div>
+              <div class="activity-content"><p class="activity-domain">Numbers & Counting</p><h3>Count & Match</h3><p>A simple invitation to compare groups and talk through what children notice.</p></div>
+              <span class="activity-link-note"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg> Classroom idea</span>
+            </article>
+            <article class="activity-card activity-yellow">
+              <div class="activity-visual"><svg viewBox="0 0 150 100" aria-hidden="true" focusable="false"><g stroke="#314d43" stroke-width="2.5" stroke-linejoin="round"><rect x="8" y="17" width="38" height="58" rx="4" fill="#d9826b" transform="rotate(-4 8 17)" /><rect x="55" y="12" width="38" height="58" rx="4" fill="#efc96e" transform="rotate(5 55 12)" /><rect x="101" y="20" width="38" height="58" rx="4" fill="#a9c2aa" transform="rotate(-3 101 20)" /></g><g fill="#193e35" font-family="Georgia, serif" font-size="28" font-weight="700" text-anchor="middle"><text x="28" y="56">A</text><text x="74" y="51">B</text><text x="120" y="59">C</text></g></svg></div>
+              <div class="activity-content"><p class="activity-domain">Alphabet & Language</p><h3>Alphabet Match</h3><p>Pair familiar letters with pictures, sounds, and the words children already know.</p></div>
+              <span class="activity-link-note"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg> Classroom idea</span>
+            </article>
+            <article class="activity-card activity-sage">
+              <div class="activity-visual"><svg viewBox="0 0 120 100" aria-hidden="true" focusable="false"><path d="M21 79c19-30 42-49 77-58-3 34-25 57-62 64" fill="#a9c2aa" stroke="#314d43" stroke-width="3" stroke-linejoin="round" /><path d="M25 76c24-19 42-34 68-50M51 51l-4-20M63 42l8-19M38 64l-17-2" fill="none" stroke="#314d43" stroke-width="2.3" stroke-linecap="round" /></svg></div>
+              <div class="activity-content"><p class="activity-domain">Art & Creativity</p><h3>Leaf Printing</h3><p>Turn a walk outside into an open-ended way to notice texture, shape, and colour.</p></div>
+              <span class="activity-link-note"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg> Classroom idea</span>
+            </article>
+            <article class="activity-card activity-teal">
+              <div class="activity-visual"><svg viewBox="0 0 150 110" aria-hidden="true" focusable="false"><path d="M10 30c19-10 39-10 64 1v61c-24-10-45-10-64-1ZM140 30c-19-10-39-10-64 1v61c24-10 45-10 64-1Z" fill="#f7efdf" stroke="#314d43" stroke-width="3" stroke-linejoin="round" /><path d="M74 31v61M24 48c12-5 27-5 42 1M126 48c-12-5-27-5-42 1" fill="none" stroke="#3e8178" stroke-width="2" stroke-linecap="round" /><path d="M33 69c7-10 15-10 22 0" fill="none" stroke="#d9826b" stroke-width="3" stroke-linecap="round" /><circle cx="111" cy="68" r="10" fill="#efc96e" stroke="#d9826b" stroke-width="2" /><path d="M104 69h14M111 62v13" stroke="#314d43" stroke-width="2" stroke-linecap="round" /></svg></div>
+              <div class="activity-content"><p class="activity-domain">Stories, Habits & Games</p><h3>Story Circle</h3><p>Make space for retelling, listening, movement, and children’s own questions.</p></div>
+              <span class="activity-link-note"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg> Classroom idea</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="gallery-section section-pad" aria-labelledby="gallery-title">
+        <div class="site-container gallery-layout">
+          <div class="gallery-copy">
+            <p class="section-kicker">A wall for wonder</p>
+            <h2 id="gallery-title">A little creativity goes <em>a long way.</em></h2>
+            <p>Every drawing, colour, and creation is another opportunity for a child to explore the world. These fictional classroom sketches are a small celebration of that curiosity.</p>
+            <div class="gallery-caption"><span class="caption-line"></span><span>Fictional artwork · made for the VikasSetu story</span></div>
+          </div>
+          <div class="artwork-grid">
+            <figure class="artwork-sheet artwork-one">
+              <div class="sheet-tape"></div>
+              <svg viewBox="0 0 160 120" aria-hidden="true" focusable="false"><path d="m26 56 53-39 54 39v47H26Z" fill="#f7efdf" stroke="#314d43" stroke-width="3" stroke-linejoin="round" /><path d="M17 58 79 11l63 47" fill="none" stroke="#d9826b" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" /><rect x="65" y="74" width="24" height="29" fill="#3e8178" stroke="#314d43" stroke-width="2.5" /><rect x="39" y="63" width="18" height="18" fill="#efc96e" stroke="#314d43" stroke-width="2.5" /><rect x="98" y="63" width="18" height="18" fill="#a9c2aa" stroke="#314d43" stroke-width="2.5" /><path d="M15 105h130M25 97c9-12 14-12 21 0M121 97c7-13 13-11 20 0" fill="none" stroke="#314d43" stroke-width="3" stroke-linecap="round" /></svg>
+              <figcaption>A garden to share</figcaption>
+            </figure>
+            <figure class="artwork-sheet artwork-two">
+              <div class="sheet-tape"></div>
+              <svg viewBox="0 0 110 110" aria-hidden="true" focusable="false"><g fill="none" stroke="#314d43" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="55" cy="55" r="19" fill="#efc96e" /><path d="M55 8v17M55 85v17M8 55h17M85 55h17M21 21l12 12M77 77l12 12M89 21 77 33M33 77 21 89" /></g><circle cx="49" cy="51" r="2.2" fill="#193e35" /><circle cx="62" cy="51" r="2.2" fill="#193e35" /><path d="M49 61c4 3 8 3 12 0" fill="none" stroke="#193e35" stroke-width="2.2" stroke-linecap="round" /></svg>
+              <figcaption>Shapes in the sunshine</figcaption>
+            </figure>
+            <figure class="artwork-sheet artwork-three">
+              <div class="sheet-tape"></div>
+              <svg viewBox="0 0 170 120" aria-hidden="true" focusable="false"><path d="M20 101c18-25 40-29 64-20 21-14 44-10 66 20" fill="#a9c2aa" stroke="#314d43" stroke-width="3" stroke-linejoin="round" /><path d="M82 101V47M82 65c-17-12-26-9-36-2M82 78c17-15 28-14 39-6" fill="none" stroke="#314d43" stroke-width="3" stroke-linecap="round" /><circle cx="82" cy="42" r="14" fill="#efc96e" stroke="#d9826b" stroke-width="3" /><path d="M46 20c8 6 11 13 8 22-9-1-15-7-15-15 0-4 2-6 7-7ZM130 28c8 5 10 12 6 20-8-1-13-6-13-14 0-3 2-5 7-6Z" fill="#f7efdf" stroke="#314d43" stroke-width="2.5" /><path d="M21 103h128" stroke="#7a5038" stroke-width="5" stroke-linecap="round" /><path d="M31 96c2-10 8-14 15-15M124 94c2-11 8-14 15-16" fill="none" stroke="#d9826b" stroke-width="3" stroke-linecap="round" /></svg>
+              <figcaption>A growing little world</figcaption>
+            </figure>
+            <figure class="artwork-sheet artwork-four">
+              <div class="sheet-tape"></div>
+              <svg viewBox="0 0 140 110" aria-hidden="true" focusable="false"><path d="M18 80h104" stroke="#314d43" stroke-width="3" stroke-linecap="round" /><g stroke="#314d43" stroke-width="2.5" stroke-linejoin="round"><rect x="18" y="54" width="34" height="26" fill="#d9826b" /><rect x="53" y="34" width="34" height="46" fill="#efc96e" /><rect x="88" y="49" width="34" height="31" fill="#3e8178" /><circle cx="35" cy="67" r="6" fill="#f7efdf" /><circle cx="70" cy="47" r="6" fill="#f7efdf" /><circle cx="105" cy="64" r="6" fill="#f7efdf" /></g></svg>
+              <figcaption>Counting colours</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="how-section section-pad" id="how-it-works" aria-labelledby="how-title">
+        <div class="site-container">
+          <div class="section-intro centered-intro how-intro">
+            <p class="section-kicker">A gentle rhythm for the day</p>
+            <h2 id="how-title">Small observations. <em>Thoughtful next steps.</em></h2>
+            <p>VikasSetu is a supportive tool—not a replacement for your judgement. You notice, choose, and reflect with the information available to you.</p>
+          </div>
+          <div class="steps-track">
+            <div class="track-line"></div>
+            <article class="step-card">
+              <div class="step-number">01</div>
+              <div class="step-illustration"><svg viewBox="0 0 140 110" aria-hidden="true" focusable="false"><path d="m29 20 87 13-11 63-87-13Z" fill="#f7efdf" stroke="#314d43" stroke-width="3" stroke-linejoin="round" /><path d="m47 35 50 8M43 48l37 6M40 62l53 8M36 76l27 4" fill="none" stroke="#3e8178" stroke-width="2.5" stroke-linecap="round" /><path d="m40 20 6-9M57 23l5-10M75 25l4-10M93 27l3-9" stroke="#d9826b" stroke-width="3" stroke-linecap="round" /><circle cx="91" cy="76" r="9" fill="#efc96e" stroke="#314d43" stroke-width="2" /><path d="m87 76 3 3 6-7" fill="none" stroke="#193e35" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg></div>
+              <h3>Observe</h3>
+              <p>Notice a child’s interest, activity, or learning behaviour and record an observation where the system supports it.</p>
+            </article>
+            <article class="step-card">
+              <div class="step-number">02</div>
+              <div class="step-illustration"><svg viewBox="0 0 140 110" aria-hidden="true" focusable="false"><path d="M18 80h104" stroke="#314d43" stroke-width="3" stroke-linecap="round" /><g stroke="#314d43" stroke-width="2.5" stroke-linejoin="round"><rect x="18" y="54" width="34" height="26" fill="#d9826b" /><rect x="53" y="34" width="34" height="46" fill="#efc96e" /><rect x="88" y="49" width="34" height="31" fill="#3e8178" /><circle cx="35" cy="67" r="6" fill="#f7efdf" /><circle cx="70" cy="47" r="6" fill="#f7efdf" /><circle cx="105" cy="64" r="6" fill="#f7efdf" /></g></svg></div>
+              <h3>Choose an activity</h3>
+              <p>Use the available context to decide on an activity that feels relevant, playful, and right for the moment.</p>
+            </article>
+            <article class="step-card">
+              <div class="step-number">03</div>
+              <div class="step-illustration"><svg viewBox="0 0 150 125" aria-hidden="true" focusable="false"><path d="M75 106V66M75 78c-13-12-24-13-34-8M75 89c12-13 23-15 35-10" fill="none" stroke="#314d43" stroke-width="4" stroke-linecap="round" /><path d="M75 68c-13-20-9-35 0-49 10 15 13 29 0 49Z" fill="#a9c2aa" stroke="#314d43" stroke-width="3" /><path d="M40 111h71" stroke="#7a5038" stroke-width="6" stroke-linecap="round" /><path d="M49 105c8-7 18-8 26-4 8-5 18-4 25 4" fill="#efc96e" stroke="#314d43" stroke-width="2.5" stroke-linejoin="round" /><circle cx="75" cy="19" r="7" fill="#d9826b" stroke="#314d43" stroke-width="2.5" /><path d="M75 3v7M60 7l5 5M90 7l-5 5" stroke="#314d43" stroke-width="2" stroke-linecap="round" /></svg></div>
+              <h3>Reflect on progress</h3>
+              <p>Record activity-trial information where supported and let your next observation grow from what you see.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="cta-section section-pad" aria-labelledby="cta-title">
+        <div class="site-container cta-panel">
+          <div class="cta-illustration"><svg viewBox="0 0 150 125" aria-hidden="true" focusable="false"><path d="M75 106V66M75 78c-13-12-24-13-34-8M75 89c12-13 23-15 35-10" fill="none" stroke="#314d43" stroke-width="4" stroke-linecap="round" /><path d="M75 68c-13-20-9-35 0-49 10 15 13 29 0 49Z" fill="#a9c2aa" stroke="#314d43" stroke-width="3" /><path d="M40 111h71" stroke="#7a5038" stroke-width="6" stroke-linecap="round" /><path d="M49 105c8-7 18-8 26-4 8-5 18-4 25 4" fill="#efc96e" stroke="#314d43" stroke-width="2.5" stroke-linejoin="round" /><circle cx="75" cy="19" r="7" fill="#d9826b" stroke="#314d43" stroke-width="2.5" /><path d="M75 3v7M60 7l5 5M90 7l-5 5" stroke="#314d43" stroke-width="2" stroke-linecap="round" /></svg></div>
+          <div class="cta-copy">
+            <p class="section-kicker">For the next small step</p>
+            <h2 id="cta-title">Every little step <em>matters.</em></h2>
+            <p>Give every child the space, attention, and encouragement to learn in their own way.</p>
+            <div class="cta-actions">
+              <button class="button button-primary" type="button">Get started <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+              <a class="button button-quiet" href="#activities">Explore activities <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="site-container footer-grid">
+        <div>
+          <a class="brand brand-footer" href="#hero">
+            <span class="brand-mark"><svg viewBox="0 0 42 42" aria-hidden="true" focusable="false"><path d="M20.6 32.7C13.1 28.8 10.1 20.8 13.5 12.1c6.6.2 12.3 4.7 13.2 11.2.5 3.2-.9 6.4-3.4 9.4Z" fill="#a9c2aa" stroke="#193e35" stroke-width="1.8" /><path d="M18.2 30.6c2.1-5 4.8-9.2 8.7-13.4M18.8 32.4c-1.1 2.5-2.2 4.1-4.1 5.5" fill="none" stroke="#193e35" stroke-width="1.8" stroke-linecap="round" /><path d="M28.4 9.8c4.7 2.7 6.6 7.4 5 12.2-4.3.2-8.1-2.5-9.1-6.6-.5-2.2 1-4.1 4.1-5.6Z" fill="#efc96e" stroke="#193e35" stroke-width="1.8" /></svg></span>
+            <span class="brand-copy">
+              <strong>VikasSetu</strong>
+              <span>Aamchi Shala</span>
+            </span>
+          </a>
+          <p class="footer-copy">An observation-led companion for early learning, made to support the teachers who notice every little thing.</p>
+        </div>
+        <div class="footer-links">
+          <p class="footer-heading">Explore</p>
+          <a href="#moments">Why VikasSetu</a>
+          <a href="#domains">Learning paths</a>
+          <a href="#activities">Activities</a>
+        </div>
+        <div class="footer-links">
+          <p class="footer-heading">Keep going</p>
+          <a href="#how-it-works">How it works</a>
+          <a href="#hero">Log in</a>
+          <a href="#hero">Get started</a>
+        </div>
+      </div>
+      <div class="site-container footer-bottom">
+        <span>VikasSetu – Aamchi Shala</span>
+        <span>Small steps build big dreams.</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

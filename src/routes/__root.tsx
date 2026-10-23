@@ -15,6 +15,8 @@ import { CalendarCheck, Home, Lightbulb, PenLine, Shapes, Users } from "lucide-r
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { StoreProvider } from "@/lib/store";
+import { initOfflineQueue, registerAutoSyncOnOnline } from "../lib/activityLogs";
+import { cn } from "@/lib/utils";
 
 function NotFoundComponent() {
   return (
@@ -127,46 +129,79 @@ function RootComponent() {
   const isCurrent = (to: (typeof NAV)[number]["to"]) =>
     to === "/" ? pathname === "/" : pathname.startsWith(to);
 
+  useEffect(() => {
+    // Initialize persistent IndexedDB offline queue on application startup
+    initOfflineQueue().catch((err) => {
+      console.error("VikasSetu: Failed to initialize offline queue:", err);
+    });
+
+    // Register automatic background sync when browser network reconnects
+    const unsubscribe = registerAutoSyncOnOnline();
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <StoreProvider>
-        <div className="mesh-bg min-h-screen lg:flex">
-          <aside className="glass border-b lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r">
+        <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text)] lg:flex">
+          <aside className="border-b border-[var(--border)] bg-[var(--bg-section)] lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r">
             <div className="flex min-h-16 items-center gap-3 px-4 py-3 sm:px-5 lg:py-7">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl hero-gradient text-2xl shadow-lift">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[var(--brand)] text-xl text-[#FAF7EF] shadow-xs">
                 🌱
               </div>
               <div className="min-w-0">
-                <p className="truncate font-display text-xl font-bold leading-none">VikasSetu</p>
-                <p className="text-xs text-muted-foreground">Aamchi Shala</p>
+                <p className="truncate font-display text-xl font-bold leading-none text-[var(--text)]">
+                  VikasSetu
+                </p>
+                <p className="text-xs text-[var(--text-muted)]">Aamchi Shala</p>
               </div>
             </div>
             <nav
               aria-label="Main navigation"
-              className="hidden gap-1 px-3 pb-3 md:flex lg:flex-col lg:pb-0"
+              className="hidden gap-1 px-3 pb-3 md:flex md:flex-wrap lg:flex-col lg:flex-nowrap lg:pb-0"
             >
-              {NAV.map(({ to, label, icon: Icon }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  activeOptions={{ exact: to === "/" }}
-                  className="flex shrink-0 items-center gap-3 whitespace-nowrap rounded-xl px-4 py-3 font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                  activeProps={{ className: "bg-primary-soft text-primary" }}
-                >
-                  <Icon aria-hidden="true" className="h-5 w-5" /> {label}
-                </Link>
-              ))}
+              {NAV.map(({ to, label, icon: Icon }) => {
+                const active = isCurrent(to);
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    activeOptions={{ exact: to === "/" }}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex min-h-[42px] shrink-0 items-center gap-2.5 whitespace-nowrap rounded-[10px] px-3.5 py-2 text-sm font-bold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] lg:text-base",
+                      active
+                        ? "bg-[var(--brand)] text-[#FAF7EF] shadow-xs"
+                        : "text-[var(--text-muted)] hover:bg-[var(--accent-soft)]/50 hover:text-[var(--text)]",
+                    )}
+                  >
+                    <Icon
+                      aria-hidden="true"
+                      className={cn(
+                        "h-5 w-5 shrink-0",
+                        active ? "text-[#FAF7EF]" : "text-[var(--text-muted)]",
+                      )}
+                    />
+                    <span className={active ? "text-[#FAF7EF]" : undefined}>{label}</span>
+                  </Link>
+                );
+              })}
             </nav>
-            <div className="mx-4 mt-8 hidden rounded-2xl bg-sun-soft p-4 text-sm lg:block">
-              <p className="font-display text-base font-bold">Every child learns differently.</p>
-              <p className="mt-1 text-muted-foreground">
+            <div className="mx-4 mt-8 hidden rounded-[12px] border border-[#EADBCA] bg-[#FAF3E6] p-4 text-sm lg:block">
+              <p className="font-display text-base font-bold text-[var(--text)]">
+                Every child learns differently.
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
                 Observe, understand, and choose the right activity.
               </p>
             </div>
           </aside>
           <nav
             aria-label="Quick navigation"
-            className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-6 border-t glass px-1 pt-2 pb-[env(safe-area-inset-bottom)] md:hidden"
+            className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-6 border-t border-[var(--border)] bg-[var(--bg-section)] px-1 pt-2 pb-[env(safe-area-inset-bottom)] md:hidden"
           >
             {NAV.map(({ to, label, mobileLabel, icon: Icon }) => (
               <Link
@@ -174,7 +209,7 @@ function RootComponent() {
                 to={to}
                 aria-label={label}
                 aria-current={isCurrent(to) ? "page" : undefined}
-                className={`flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-md px-0.5 text-[0.68rem] font-bold leading-none transition ${isCurrent(to) ? "text-primary" : "text-muted-foreground"}`}
+                className={`flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-[10px] px-0.5 text-[0.68rem] font-bold leading-none transition-colors focus-visible:outline-2 focus-visible:outline-[var(--brand)] ${isCurrent(to) ? "text-[var(--brand)]" : "text-[var(--text-muted)]"}`}
               >
                 <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
                 <span className="max-w-full truncate">{mobileLabel}</span>

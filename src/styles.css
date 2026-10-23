@@ -77,10 +77,27 @@
   --ring: oklch(0.6 0.12 160);
   --shadow-soft: 0 1px 2px oklch(0.4 0.04 160 / 0.05), 0 6px 20px -8px oklch(0.4 0.04 160 / 0.12);
   --shadow-lift: 0 2px 4px oklch(0.4 0.04 160 / 0.06), 0 18px 40px -14px oklch(0.4 0.06 160 / 0.25);
+
+  /* VikasSetu Recommendations & Calm Design Tokens */
+  --bg-page: #FAF7EF;
+  --bg-section: #F4EFE3;
+  --accent-soft: #DCE9DD;
+  --brand: #193F32;
+  --attention: #DF806B;
+  --border: #E7DFD1;
+  --text: #26332D;
+  --text-muted: #57655B; /* Darkened from #778278 for 5.2:1 accessible contrast against #FAF7EF */
+  --card-bg: #FFFDF8;
+  --shadow-warm-xs: 0 1px 2px rgba(25, 63, 50, 0.06);
+  --shadow-warm-sm: 0 4px 12px -2px rgba(25, 63, 50, 0.08);
+  --radius-card: 12px;
+  --radius-btn: 10px;
 }
 
 @layer base {
-  * { border-color: var(--color-border); }
+  * {
+    border-color: var(--color-border);
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
@@ -91,9 +108,28 @@
     min-height: 100dvh;
     overscroll-behavior-x: none;
   }
-  button, a { -webkit-tap-highlight-color: transparent; }
-  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--color-ring); outline-offset: 3px; }
-  h1, h2, h3, h4 { font-family: var(--font-display); line-height: 1.15; }
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
+  [role="button"]:focus-visible,
+  [role="checkbox"]:focus-visible,
+  [tabindex="0"]:focus-visible {
+    outline: 3px solid var(--color-ring);
+    outline-offset: 3px;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    line-height: 1.15;
+  }
 }
 
 @utility card-soft {
@@ -104,41 +140,89 @@
 }
 
 @utility card-lift {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  &:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lift);
+  }
 }
 
 @utility btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
-  border-radius: 9999px; padding: 0.65rem 1.25rem; font-weight: 700; font-size: 0.95rem;
-  transition: all 0.25s cubic-bezier(0.2,0.8,0.2,1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  padding: 0.65rem 1.25rem;
+  min-height: 2.75rem; /* 44px minimum touch target */
+  font-weight: 700;
+  font-size: 0.95rem;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 @utility btn-primary {
-  background: linear-gradient(135deg, var(--color-primary), var(--color-teal)); color: var(--color-primary-foreground);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-teal));
+  color: var(--color-primary-foreground);
   box-shadow: 0 6px 16px -6px color-mix(in oklab, var(--color-primary) 60%, transparent);
-  &:hover { filter: brightness(1.08); transform: translateY(-2px); box-shadow: 0 14px 28px -10px color-mix(in oklab, var(--color-primary) 70%, transparent); }
-  &:active { transform: scale(0.97); }
+  &:hover {
+    filter: brightness(1.08);
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px -10px color-mix(in oklab, var(--color-primary) 70%, transparent);
+  }
+  &:active {
+    transform: scale(0.97);
+  }
 }
 @utility btn-sun {
-  background: var(--color-sun); color: var(--color-foreground);
-  &:hover { filter: brightness(1.04); transform: translateY(-1px); }
+  background: var(--color-sun);
+  color: var(--color-foreground);
+  &:hover {
+    filter: brightness(1.04);
+    transform: translateY(-1px);
+  }
 }
 @utility btn-ghost {
-  background: var(--color-card); color: var(--color-foreground); border: 1px solid var(--color-border);
-  &:hover { background: var(--color-muted); }
+  background: var(--color-card);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-border);
+  &:hover {
+    background: var(--color-muted);
+  }
 }
 
 @utility fade-up {
-  animation: fade-up 0.6s cubic-bezier(0.2,0.8,0.2,1) both;
+  animation: fade-up 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
-@keyframes fade-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 
 /* ---------- Motion & atmosphere ---------- */
 @utility mesh-bg {
   background:
-    radial-gradient(40rem 30rem at 0% 0%, color-mix(in oklab, var(--color-primary) 14%, transparent), transparent 60%),
-    radial-gradient(36rem 28rem at 100% 10%, color-mix(in oklab, var(--color-sun) 18%, transparent), transparent 60%),
-    radial-gradient(40rem 30rem at 60% 100%, color-mix(in oklab, var(--color-teal) 12%, transparent), transparent 60%),
+    radial-gradient(
+      40rem 30rem at 0% 0%,
+      color-mix(in oklab, var(--color-primary) 14%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      36rem 28rem at 100% 10%,
+      color-mix(in oklab, var(--color-sun) 18%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      40rem 30rem at 60% 100%,
+      color-mix(in oklab, var(--color-teal) 12%, transparent),
+      transparent 60%
+    ),
     var(--color-background);
   background-attachment: fixed;
 }
@@ -148,25 +232,45 @@
   -webkit-backdrop-filter: blur(18px) saturate(1.4);
 }
 @utility text-gradient {
-  background: linear-gradient(100deg, var(--color-primary), var(--color-teal) 50%, var(--color-sun));
+  background: linear-gradient(
+    100deg,
+    var(--color-primary),
+    var(--color-teal) 50%,
+    var(--color-sun)
+  );
   background-size: 200% auto;
-  -webkit-background-clip: text; background-clip: text; color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
   animation: shimmer-text 6s linear infinite;
 }
-@keyframes shimmer-text { to { background-position: 200% center; } }
+@keyframes shimmer-text {
+  to {
+    background-position: 200% center;
+  }
+}
 
 @utility hero-gradient {
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-teal) 100%);
 }
 @utility blob {
   border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
-  animation: blob 14s ease-in-out infinite, float 9s ease-in-out infinite;
+  animation:
+    blob 14s ease-in-out infinite,
+    float 9s ease-in-out infinite;
   filter: blur(2px);
 }
 @keyframes blob {
-  0%,100% { border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%; }
-  33% { border-radius: 70% 30% 46% 54% / 30% 39% 61% 70%; }
-  66% { border-radius: 33% 67% 37% 63% / 62% 33% 67% 38%; }
+  0%,
+  100% {
+    border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+  }
+  33% {
+    border-radius: 70% 30% 46% 54% / 30% 39% 61% 70%;
+  }
+  66% {
+    border-radius: 33% 67% 37% 63% / 62% 33% 67% 38%;
+  }
 }
 @utility float {
   animation: float 6s ease-in-out infinite;
@@ -174,35 +278,97 @@
 @utility float-slow {
   animation: float 9s ease-in-out infinite reverse;
 }
-@keyframes float { 0%,100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-12px) rotate(2deg); } }
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  50% {
+    transform: translateY(-12px) rotate(2deg);
+  }
+}
 
 @utility wiggle {
-  &:hover { animation: wiggle 0.5s ease; }
+  &:hover {
+    animation: wiggle 0.5s ease;
+  }
 }
-@keyframes wiggle { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-8deg) scale(1.1); } 75% { transform: rotate(8deg) scale(1.1); } }
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-8deg) scale(1.1);
+  }
+  75% {
+    transform: rotate(8deg) scale(1.1);
+  }
+}
 
 @utility stagger {
-  & > * { animation: rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-  & > *:nth-child(1) { animation-delay: 0.05s; }
-  & > *:nth-child(2) { animation-delay: 0.12s; }
-  & > *:nth-child(3) { animation-delay: 0.19s; }
-  & > *:nth-child(4) { animation-delay: 0.26s; }
-  & > *:nth-child(5) { animation-delay: 0.33s; }
-  & > *:nth-child(6) { animation-delay: 0.40s; }
-  & > *:nth-child(7) { animation-delay: 0.47s; }
-  & > *:nth-child(8) { animation-delay: 0.54s; }
-  & > *:nth-child(n+9) { animation-delay: 0.6s; }
+  & > * {
+    animation: rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  & > *:nth-child(1) {
+    animation-delay: 0.05s;
+  }
+  & > *:nth-child(2) {
+    animation-delay: 0.12s;
+  }
+  & > *:nth-child(3) {
+    animation-delay: 0.19s;
+  }
+  & > *:nth-child(4) {
+    animation-delay: 0.26s;
+  }
+  & > *:nth-child(5) {
+    animation-delay: 0.33s;
+  }
+  & > *:nth-child(6) {
+    animation-delay: 0.4s;
+  }
+  & > *:nth-child(7) {
+    animation-delay: 0.47s;
+  }
+  & > *:nth-child(8) {
+    animation-delay: 0.54s;
+  }
+  & > *:nth-child(n + 9) {
+    animation-delay: 0.6s;
+  }
 }
-@keyframes rise { from { opacity: 0; transform: translateY(24px) scale(0.97); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
 
 @utility grow-x {
   transform-origin: left;
   animation: grow-x 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) both 0.3s;
 }
-@keyframes grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
 
 @utility tilt {
-  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s ease, border-color 0.35s ease;
+  transition:
+    transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.35s ease,
+    border-color 0.35s ease;
   &:hover {
     transform: translateY(-6px) scale(1.015);
     box-shadow: 0 30px 60px -20px color-mix(in oklab, var(--color-primary) 35%, transparent);
@@ -210,27 +376,54 @@
   }
 }
 @utility shine {
-  position: relative; overflow: hidden;
+  position: relative;
+  overflow: hidden;
   &::after {
-    content: ""; position: absolute; inset: 0;
+    content: "";
+    position: absolute;
+    inset: 0;
     background: linear-gradient(110deg, transparent 30%, oklch(1 0 0 / 0.45) 50%, transparent 70%);
-    transform: translateX(-120%); transition: transform 0.8s ease;
+    transform: translateX(-120%);
+    transition: transform 0.8s ease;
   }
-  &:hover::after { transform: translateX(120%); }
+  &:hover::after {
+    transform: translateX(120%);
+  }
 }
 @utility pulse-ring {
   position: relative;
   &::before {
-    content: ""; position: absolute; inset: -4px; border-radius: inherit;
-    border: 2px solid var(--color-primary); animation: ring 2s ease-out infinite;
+    content: "";
+    position: absolute;
+    inset: -4px;
+    border-radius: inherit;
+    border: 2px solid var(--color-primary);
+    animation: ring 2s ease-out infinite;
   }
 }
-@keyframes ring { from { opacity: 0.7; transform: scale(1); } to { opacity: 0; transform: scale(1.35); } }
+@keyframes ring {
+  from {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @media (max-width: 639px) {
-  .btn { min-height: 2.75rem; }
+  .btn {
+    min-height: 2.75rem;
+  }
 }

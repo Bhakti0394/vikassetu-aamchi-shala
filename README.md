@@ -10,15 +10,15 @@ VikasSetu gives the teacher one simple place to record what they see in class, s
 
 ## Features
 
-| Feature | What it does |
-|---|---|
-| **Dashboard** | Total children, attendance today, observations recorded, learning progress, and children who need attention |
-| **Children Profiles** | Basic records and a progress view for each child |
-| **Observation Management** | Record observations across five learning areas, with a score and a note |
-| **Activity Library** | Age-appropriate preschool activities with steps, duration and difficulty |
-| **Recommendations** | Simple rule-based activity suggestions, with the reason shown |
-| **Attendance** | Daily attendance and monthly summaries |
-| **Progress Tracking** | Charts and summaries of each child's learning over time |
+| Feature                    | What it does                                                                                                |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| **Dashboard**              | Total children, attendance today, observations recorded, learning progress, and children who need attention |
+| **Children Profiles**      | Basic records and a progress view for each child                                                            |
+| **Observation Management** | Record observations across five learning areas, with a score and a note                                     |
+| **Activity Library**       | Age-appropriate preschool activities with steps, duration and difficulty                                    |
+| **Recommendations**        | Simple rule-based activity suggestions, with the reason shown                                               |
+| **Attendance**             | Daily attendance and monthly summaries                                                                      |
+| **Progress Tracking**      | Charts and summaries of each child's learning over time                                                     |
 
 **Learning areas:** Alphabet, Numbers, Colours & Shapes, Art & Creativity, Stories & Habits.
 
@@ -26,15 +26,15 @@ VikasSetu gives the teacher one simple place to record what they see in class, s
 
 ## Tech stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 19, TypeScript, TanStack Start and Router, Vite |
-| Styling and UI | Tailwind CSS v4, Radix UI, Lucide icons |
-| Charts | Recharts |
-| Backend | Python, FastAPI, Uvicorn |
-| Database | SQLite with SQLAlchemy 2.0 |
-| Validation | Pydantic v2 and database constraints |
-| Frontend package manager | Bun |
+| Layer                    | Technology                                            |
+| ------------------------ | ----------------------------------------------------- |
+| Frontend                 | React 19, TypeScript, TanStack Start and Router, Vite |
+| Styling and UI           | Tailwind CSS v4, Radix UI, Lucide icons               |
+| Charts                   | Recharts                                              |
+| Backend                  | Python, FastAPI, Uvicorn                              |
+| Database                 | SQLite with SQLAlchemy 2.0                            |
+| Validation               | Pydantic v2 and database constraints                  |
+| Frontend package manager | Bun                                                   |
 
 ## Project structure
 
@@ -97,7 +97,7 @@ uvicorn app.main:app --port 8000 --reload
 
 The API is now running at `http://localhost:8000`. Interactive API documentation is at `http://localhost:8000/docs`.
 
-`seed.py --reset` creates `backend/vikassetu.db` with 9 sample children, 11 activities, 51 observations and attendance history. The database file is not committed to Git, so every developer runs the seed on their own machine.
+`seed.py --reset` creates `backend/vikassetu.db` with 9 sample children, 21 activities, 51 observations and attendance history. The database file is not committed to Git, so every developer runs the seed on their own machine.
 
 ### 3. Run the frontend
 
@@ -112,13 +112,13 @@ The terminal prints the local address to open in your browser.
 
 ## Database
 
-| Table | Purpose |
-|---|---|
-| `children` | Child profile: name, age, avatar, scores per learning area, strengths, needs |
-| `activities` | The activity library: domain, difficulty, minutes, skills, steps, target levels |
-| `observations` | A teacher's observation: child, learning area, activity, score (1–3), note, date |
-| `attendance` | One row per child per day. A child can have only one record per date |
-| `activity_logs` | Whether an activity was tried and how it went |
+| Table           | Purpose                                                                          |
+| --------------- | -------------------------------------------------------------------------------- |
+| `children`      | Child profile: name, age, avatar, scores per learning area, strengths, needs     |
+| `activities`    | The activity library: domain, difficulty, minutes, skills, steps, target levels  |
+| `observations`  | A teacher's observation: child, learning area, activity, score (1–3), note, date |
+| `attendance`    | One row per child per day. A child can have only one record per date             |
+| `activity_logs` | Whether an activity was tried and how it went                                    |
 
 Data integrity is enforced by foreign keys (deleting a child deletes their related records), CHECK constraints (valid scores, learning areas and difficulty), and a unique constraint on attendance.
 
@@ -126,15 +126,15 @@ Data integrity is enforced by foreign keys (deleting a child deletes their relat
 
 Base URL: `http://localhost:8000/api`
 
-| Area | Endpoints |
-|---|---|
-| Health | `GET /health` |
-| Children | `GET /children`, `POST /children`, `GET /children/{id}`, `PUT /children/{id}`, `DELETE /children/{id}` |
-| Observations | `GET /observations`, `POST /observations`, `PUT /observations/{id}`, `DELETE /observations/{id}` |
-| Attendance | `GET /attendance`, `POST /attendance`, `POST /attendance/bulk` |
-| Activities | `GET /activities`, `GET /activities/{id}` |
-| Activity logs | `GET /activity-logs`, `POST /activity-logs` |
-| Dashboard | `GET /dashboard/summary` |
+| Area          | Endpoints                                                                                              |
+| ------------- | ------------------------------------------------------------------------------------------------------ |
+| Health        | `GET /health`                                                                                          |
+| Children      | `GET /children`, `POST /children`, `GET /children/{id}`, `PUT /children/{id}`, `DELETE /children/{id}` |
+| Observations  | `GET /observations`, `POST /observations`, `PUT /observations/{id}`, `DELETE /observations/{id}`       |
+| Attendance    | `GET /attendance`, `POST /attendance`, `POST /attendance/bulk`                                         |
+| Activities    | `GET /activities`, `GET /activities/{id}`                                                              |
+| Activity logs | `GET /activity-logs`, `POST /activity-logs`                                                            |
+| Dashboard     | `GET /dashboard/summary`                                                                               |
 
 Request and response shapes, validation rules and error formats are documented in [`docs/BACKEND_CONTRACT.md`](docs/BACKEND_CONTRACT.md).
 
@@ -147,12 +147,12 @@ Request and response shapes, validation rules and error formats are documented i
 
 ## Team and responsibilities
 
-| Member | Module |
-|---|---|
-| Bhakti | Backend and database: schema, API, validation, seed data, API contract |
-| Sarvesh | Observation management: the Record Observation form and saved observations |
-| Yash Desai | Observation and recommendation engine, activity logs |
-| Prachiti | Dashboard, attendance, children profiles and progress charts |
+| Member     | Module                                                                     |
+| ---------- | -------------------------------------------------------------------------- |
+| Bhakti     | Backend and database: schema, API, validation, seed data, API contract     |
+| Sarvesh    | Observation management: the Record Observation form and saved observations |
+| Yash Desai | Observation and recommendation engine, activity logs                       |
+| Prachiti   | Dashboard, attendance, children profiles and progress charts               |
 
 ### Working together
 

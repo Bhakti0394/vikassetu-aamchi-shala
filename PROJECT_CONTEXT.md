@@ -43,6 +43,7 @@ Learning and observation is organized around **5 Foundational Learning Domains**
 - **Non-Diagnostic:** The platform never labels a child as "slow" or "deficient". It describes areas as _"Doing well in [Domain]"_ or _"More practice in [Domain]"_.
 - **Unobserved Invariant:** Newly added children default to score 1 with state `"First observations pending"` and are **never** flagged in the "Needs Attention" list until an actual classroom observation is recorded.
 - **Dynamic Derivation:** A child's current domain score is always their **most recent observation score** in that domain.
+- **Simple, Teacher-Friendly Language:** Use everyday, familiar English without educational jargon or fancy terminology. Activities must have direct, intuitive titles that describe what children will do (e.g. *"Jump and Learn Numbers"* instead of *"Number Hopscotch"*, *"Mix Colours"* instead of *"Colour Mixing Lab"*, *"Find Things in Nature"* instead of *"Nature Treasure Mandala"*). Instructions and skills must be short, clear, and actionable without requiring prior educational training.
 
 ---
 

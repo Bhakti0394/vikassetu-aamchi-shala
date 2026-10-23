@@ -11,13 +11,16 @@ import {
 } from "lucide-react";
 import { activityOf, domainOf, toneBg } from "@/lib/data";
 import { useStore } from "@/lib/store";
-import { Avatar } from "@/components/ui-kit";
+import { Avatar, SyncStatusBadge } from "@/components/ui-kit";
 import { cn } from "@/lib/utils";
 import {
   saveActivityLog,
   queuePendingTrial,
   fetchChildActivityHistory,
   syncPendingTrials,
+  dismissPendingTrial,
+  getStorageStatus,
+  registerAutoSyncOnOnline,
   type ActivityLogOutcome,
   type ActivityLogRecord,
   type QueuedActivityTrial,
@@ -75,22 +78,31 @@ function ActivityRun() {
 
   const selectedChild = children.find((c) => c.id === selectedChildId);
 
-  // Load trial history whenever selected child or activity changes
+  // Load trial history whenever selected child or activity changes, and subscribe to reconnection auto-sync
   useEffect(() => {
     if (!selectedChildId || !a) return;
     let isMounted = true;
 
-    fetchChildActivityHistory(selectedChildId).then((res) => {
-      if (isMounted) {
-        setChildHistory({
-          confirmed: res.confirmed.filter((l) => l.activityId === a.id),
-          queued: res.queued.filter((l) => l.activityId === a.id),
-        });
-      }
+    const refreshHistory = () => {
+      fetchChildActivityHistory(selectedChildId).then((res) => {
+        if (isMounted) {
+          setChildHistory({
+            confirmed: res.confirmed.filter((l) => l.activityId === a.id),
+            queued: res.queued.filter((l) => l.activityId === a.id),
+          });
+        }
+      });
+    };
+
+    refreshHistory();
+
+    const unsubscribe = registerAutoSyncOnOnline(() => {
+      refreshHistory();
     });
 
     return () => {
       isMounted = false;
+      unsubscribe();
     };
   }, [selectedChildId, a?.id]);
 
@@ -129,29 +141,40 @@ function ActivityRun() {
       }));
       setNote("");
     } else {
-      // Offline fallback: save in-memory only and clearly flag as queued
+      // Offline fallback: save to persistent offline queue (IndexedDB)
       const queuedItem = queuePendingTrial(payload, res.error);
+      const storage = getStorageStatus();
       setStatusMessage({
         type: "queued",
-        message:
-          "Saved to session queue (offline — will sync when backend reconnects). NOTE: Memory-only; not persisted across reloads.",
+        message: storage.isPersistent
+          ? "Saved offline (persisted across reloads). Will sync automatically when connection restores."
+          : `Saved to session queue (${storage.warning || "temporary memory only"}).`,
       });
       setChildHistory((prev) => ({
         ...prev,
-        queued: [queuedItem, ...prev.queued],
+        queued: [queuedItem, ...prev.queued.filter((q) => q.queueId !== queuedItem.queueId)],
       }));
       setNote("");
     }
   };
 
+  const [isSyncing, setIsSyncing] = useState(false);
+
   const handleManualSync = async () => {
-    const res = await syncPendingTrials();
-    if (res.syncedCount > 0) {
-      setStatusMessage({
-        type: "success",
-        message: `Synced ${res.syncedCount} queued trial(s) successfully with backend!`,
-      });
-      // Refresh history
+    setIsSyncing(true);
+    try {
+      const res = await syncPendingTrials({ force: true });
+      if (res.syncedCount > 0) {
+        setStatusMessage({
+          type: "success",
+          message: `Synced ${res.syncedCount} queued trial(s) successfully with backend!`,
+        });
+      } else if (res.errors.length > 0) {
+        setStatusMessage({
+          type: "error",
+          message: `Sync failed: ${res.errors[0]}. Item remains safely stored offline.`,
+        });
+      }
       if (selectedChildId) {
         const refreshed = await fetchChildActivityHistory(selectedChildId);
         setChildHistory({
@@ -159,12 +182,27 @@ function ActivityRun() {
           queued: refreshed.queued.filter((l) => l.activityId === a.id),
         });
       }
-    } else if (res.errors.length > 0) {
-      setStatusMessage({
-        type: "queued",
-        message: `Sync failed: ${res.errors[0]}. Item remains queued in memory.`,
-      });
+    } finally {
+      setIsSyncing(false);
     }
+  };
+
+  const handleDismissTrial = (queueId: string) => {
+    dismissPendingTrial(queueId);
+    setChildHistory((prev) => ({
+      ...prev,
+      queued: prev.queued.filter((q) => q.queueId !== queueId),
+    }));
+  };
+
+  const handleDismissAllFailed = () => {
+    childHistory.queued
+      .filter((q) => q.status === "sync_failed")
+      .forEach((q) => dismissPendingTrial(q.queueId));
+    setChildHistory((prev) => ({
+      ...prev,
+      queued: prev.queued.filter((q) => q.status !== "sync_failed"),
+    }));
   };
 
   const totalTrials = childHistory.confirmed.length + childHistory.queued.length;
@@ -191,17 +229,19 @@ function ActivityRun() {
 
         {/* Child Selector */}
         <div className="mx-auto mt-5 flex max-w-sm flex-wrap items-center justify-center gap-2 rounded-2xl bg-card/90 p-2 shadow-soft">
-          <div className="flex items-center gap-2 px-2">
+          <label htmlFor="child-activity-select" className="flex items-center gap-2 px-2 cursor-pointer">
             {selectedChild ? <Avatar child={selectedChild} size="sm" /> : <User className="h-5 w-5" />}
             <span className="text-xs font-bold text-muted-foreground">Child:</span>
-          </div>
+          </label>
           <select
+            id="child-activity-select"
+            aria-label="Select child for activity"
             value={selectedChildId}
             onChange={(e) => {
               setSelectedChildId(e.target.value);
               setStatusMessage(null);
             }}
-            className="rounded-xl border border-border/70 bg-background px-3 py-1.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary"
+            className="min-h-[44px] rounded-xl border border-border/70 bg-background px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {children.map((c) => (
               <option key={c.id} value={c.id}>
@@ -221,20 +261,24 @@ function ActivityRun() {
           </span>
         </div>
 
-        <ol className="space-y-3 stagger">
+        <ol className="space-y-3 stagger" aria-label="Activity steps checklist">
           {a.steps.map((s, i) => {
             const on = done.includes(i);
             return (
               <li key={i}>
                 <button
                   type="button"
+                  role="checkbox"
+                  aria-checked={on}
+                  aria-label={`Step ${i + 1}: ${s}`}
                   onClick={() => setDone(on ? done.filter((x) => x !== i) : [...done, i])}
                   className={cn(
-                    "flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition",
+                    "flex min-h-[48px] w-full items-center gap-4 rounded-2xl border p-4 text-left transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                     on ? "border-primary bg-primary-soft" : "hover:bg-muted",
                   )}
                 >
                   <span
+                    aria-hidden="true"
                     className={cn(
                       "flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-bold",
                       on ? "bg-primary text-primary-foreground" : "bg-muted",
@@ -242,7 +286,7 @@ function ActivityRun() {
                   >
                     {on ? <Check className="h-5 w-5" /> : i + 1}
                   </span>
-                  <span className={cn("font-semibold", on && "text-muted-foreground line-through")}>
+                  <span className={cn("font-semibold break-words", on && "text-muted-foreground line-through")}>
                     {s}
                   </span>
                 </button>
@@ -275,7 +319,8 @@ function ActivityRun() {
             type="button"
             disabled={isSaving || !selectedChildId}
             onClick={() => handleRecordOutcome("tried_helped")}
-            className="rounded-xl border border-teal/40 bg-teal-soft px-3 py-2.5 text-center text-sm font-bold text-teal transition hover:opacity-90 disabled:opacity-50"
+            aria-label="Record outcome: Tried, Helped"
+            className="min-h-[48px] rounded-xl border border-teal/40 bg-teal-soft px-3 py-2 text-center text-sm font-bold text-teal transition hover:opacity-90 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             Tried — Helped
           </button>
@@ -284,7 +329,8 @@ function ActivityRun() {
             type="button"
             disabled={isSaving || !selectedChildId}
             onClick={() => handleRecordOutcome("tried_needs_support")}
-            className="rounded-xl border border-sun/40 bg-sun-soft px-3 py-2.5 text-center text-sm font-bold text-foreground transition hover:opacity-90 disabled:opacity-50"
+            aria-label="Record outcome: Tried, Needs Support"
+            className="min-h-[48px] rounded-xl border border-sun/40 bg-sun-soft px-3 py-2 text-center text-sm font-bold text-foreground transition hover:opacity-90 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             Tried — Needs Support
           </button>
@@ -293,7 +339,8 @@ function ActivityRun() {
             type="button"
             disabled={isSaving || !selectedChildId}
             onClick={() => handleRecordOutcome("not_tried")}
-            className="rounded-xl border border-border bg-background/70 px-3 py-2.5 text-center text-sm font-bold text-muted-foreground transition hover:opacity-90 disabled:opacity-50"
+            aria-label="Record outcome: Not Tried"
+            className="min-h-[48px] rounded-xl border border-border bg-background/70 px-3 py-2 text-center text-sm font-bold text-muted-foreground transition hover:opacity-90 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             Not Tried
           </button>
@@ -301,20 +348,27 @@ function ActivityRun() {
 
         {/* Observation Note */}
         <div className="mt-3">
+          <label htmlFor="trial-note-input" className="sr-only">
+            Optional classroom trial notes
+          </label>
           <input
+            id="trial-note-input"
             type="text"
+            aria-label="Optional classroom trial notes"
             placeholder="Optional classroom trial notes (e.g. child needed help with step 2)..."
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            className="w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary"
+            className="min-h-[44px] w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
         {/* Feedback / Status message */}
         {statusMessage && (
           <div
+            role="status"
+            aria-live="polite"
             className={cn(
-              "mt-3 flex items-center justify-between gap-2 rounded-xl p-3 text-xs font-semibold",
+              "mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl p-3 text-xs font-semibold",
               statusMessage.type === "success"
                 ? "border border-teal/30 bg-teal-soft text-teal"
                 : statusMessage.type === "queued"
@@ -324,20 +378,21 @@ function ActivityRun() {
           >
             <div className="flex items-center gap-2">
               {statusMessage.type === "success" ? (
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-teal" />
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-teal" aria-hidden="true" />
               ) : statusMessage.type === "queued" ? (
-                <CloudUpload className="h-4 w-4 shrink-0 text-sun-foreground" />
+                <CloudUpload className="h-4 w-4 shrink-0 text-sun-foreground" aria-hidden="true" />
               ) : (
-                <AlertCircle className="h-4 w-4 shrink-0 text-coral" />
+                <AlertCircle className="h-4 w-4 shrink-0 text-coral" aria-hidden="true" />
               )}
-              <span>{statusMessage.message}</span>
+              <span className="break-words">{statusMessage.message}</span>
             </div>
 
             {statusMessage.type === "queued" && (
               <button
                 type="button"
                 onClick={handleManualSync}
-                className="shrink-0 rounded-lg bg-foreground/10 px-2 py-1 text-xs font-bold hover:bg-foreground/20"
+                aria-label="Sync offline trial to server now"
+                className="btn btn-ghost inline-flex min-h-[44px] shrink-0 items-center rounded-lg px-3 py-2 text-xs font-bold hover:bg-foreground/10 focus-visible:ring-2 focus-visible:ring-primary"
               >
                 Sync Now
               </button>
@@ -349,48 +404,104 @@ function ActivityRun() {
       {/* Previous Trials History with Selected Child */}
       {selectedChild && totalTrials > 0 && (
         <section className="card-soft p-6">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="font-display text-lg font-bold">
               Previous trials with {selectedChild.name} ({totalTrials})
             </h3>
-            {childHistory.queued.length > 0 && (
-              <button
-                type="button"
-                onClick={handleManualSync}
-                className="flex items-center gap-1 rounded-xl bg-sun-soft px-2.5 py-1 text-xs font-bold text-foreground hover:opacity-90"
-              >
-                <CloudUpload className="h-3.5 w-3.5" />
-                Sync {childHistory.queued.length} Pending
-              </button>
-            )}
+            <SyncStatusBadge
+              pendingCount={childHistory.queued.filter((q) => q.status !== "sync_failed").length}
+              failedCount={childHistory.queued.filter((q) => q.status === "sync_failed").length}
+              isSyncing={isSyncing}
+              onSync={childHistory.queued.length > 0 ? handleManualSync : undefined}
+              onDismissFailed={
+                childHistory.queued.some((q) => q.status === "sync_failed")
+                  ? handleDismissAllFailed
+                  : undefined
+              }
+              isPersistent={getStorageStatus().isPersistent}
+              storageWarning={getStorageStatus().warning}
+            />
           </div>
 
           <ul className="space-y-2.5">
-            {/* Queued (In-memory pending) trials first */}
-            {childHistory.queued.map((q) => (
-              <li
-                key={q.queueId}
-                className="flex flex-col gap-1 rounded-xl border border-sun/30 bg-sun-soft/50 p-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-md bg-sun/40 px-2 py-0.5 text-xs font-bold text-foreground">
-                      {formatOutcomeLabel(q.outcome)}
-                    </span>
-                    <span className="text-xs font-bold text-sun-foreground">
-                      ⚠️ Session Queue (Pending Sync)
-                    </span>
+            {/* Queued / Offline trials first */}
+            {childHistory.queued.map((q) => {
+              const isFailed = q.status === "sync_failed";
+              return (
+                <li
+                  key={q.queueId}
+                  className={cn(
+                    "flex flex-col gap-2 rounded-xl p-3 sm:flex-row sm:items-center sm:justify-between",
+                    isFailed
+                      ? "border border-coral/30 bg-coral-soft/50"
+                      : "border border-sun/30 bg-sun-soft/50",
+                  )}
+                >
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={cn(
+                          "rounded-md px-2 py-0.5 text-xs font-bold",
+                          isFailed
+                            ? "bg-coral/30 text-coral"
+                            : "bg-sun/40 text-foreground",
+                        )}
+                      >
+                        {formatOutcomeLabel(q.outcome)}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-xs font-bold",
+                          isFailed ? "text-coral" : "text-sun-foreground",
+                        )}
+                      >
+                        {isFailed ? "⚠️ Sync failed" : "⏳ Saved offline (pending sync)"}
+                      </span>
+                      {q.retryCount ? (
+                        <span className="text-[0.7rem] text-muted-foreground">
+                          · Retry #{q.retryCount}
+                        </span>
+                      ) : null}
+                    </div>
+                    {isFailed && q.lastError && (
+                      <p className="text-xs font-medium text-coral break-words">
+                        Error: {q.lastError}
+                      </p>
+                    )}
+                    {q.note && <p className="text-xs text-muted-foreground break-words">"{q.note}"</p>}
                   </div>
-                  {q.note && <p className="mt-1 text-xs text-muted-foreground">"{q.note}"</p>}
-                </div>
-                <div className="text-right text-xs font-medium text-muted-foreground">
-                  <span>
-                    {q.completedSteps}/{q.totalSteps} steps
-                  </span>{" "}
-                  · Just now
-                </div>
-              </li>
-            ))}
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 sm:flex-col sm:items-end">
+                    <div className="text-right text-xs font-medium text-muted-foreground">
+                      <span>
+                        {q.completedSteps}/{q.totalSteps} steps
+                      </span>{" "}
+                      · Just now
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleManualSync}
+                        disabled={isSyncing}
+                        aria-label={isFailed ? `Retry syncing ${a.name} trial` : `Sync ${a.name} trial`}
+                        className="btn btn-ghost inline-flex min-h-[44px] items-center rounded-lg bg-foreground/10 px-3 py-2 text-xs font-bold text-foreground hover:bg-foreground/20 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        {isFailed ? "Retry" : "Sync"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDismissTrial(q.queueId)}
+                        aria-label={`Dismiss ${a.name} trial from queue`}
+                        className="btn btn-ghost inline-flex min-h-[44px] items-center rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                        title="Dismiss trial from queue"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
 
             {/* Confirmed backend records */}
             {childHistory.confirmed.map((l) => (

@@ -131,3 +131,68 @@ Empower preschool teachers with an explainable, rule-based activity recommendati
   - Conduct strict boundary audit (`store.tsx`, `api.ts`, protected routers, shared tables untouched)
   - Verify `ActivityLogCreate` validator remains documented as pending Bhakti's approval
   - Update `docs/tasks/progress.txt` and `.planning/STATE.md`
+
+### Phase 3: Reliability, Production Readiness & Accessibility
+
+- [x] **TASK-15: Native IndexedDB Offline Storage Adapter** (`src/lib/activityLogs.ts`)
+  - Implement native IndexedDB adapter (`VikasSetuOfflineDB`, `pendingTrials`, keyPath `queueId`, index `by_childId`)
+  - Provide honest `getStorageStatus()` reporting engine (`indexeddb` vs `memory_fallback`) and user-facing warning
+  - Ensure concurrency-safe hydration without overwriting newer in-memory writes
+  - Add comprehensive automated tests in `src/lib/activityLogs.test.ts`
+
+- [x] **TASK-16: Idempotent Retries, Deduplication & Auto-Sync** (`src/lib/activityLogs.ts`)
+  - Generate stable RFC4122 UUID v4 `clientTrialId` retained across retries and reloads
+  - Implement bounded exponential backoff (`calculateRetryDelay`: 1s, 2s, 4s, 8s, 16s, capped at 30s)
+  - Prevent concurrent duplicate sync calls with in-flight tracking
+  - Debounce rapid duplicate submissions within 500ms
+  - Register automatic background sync listener on window `online` event with unsubscribe cleanup
+
+- [x] **TASK-17: Accessible Sync Status Indicator & Queue Management** (`src/components/ui-kit.tsx`)
+  - Create accessible `SyncStatusBadge` with ARIA live announcements (`role="status" aria-live="polite"`, `role="region"`)
+  - Implement distinct states: Synced, Syncing (spinner), Pending (count), Failed (alert), and Session-only (fallback)
+  - Provide inline recovery actions: "Sync now", "Retry sync", and "Clear failed"
+  - Integrated into `src/routes/activities.$id.tsx` and `src/routes/children.$id.tsx` with single-item dismissal
+
+- [x] **TASK-18: Mobile Ergonomics, Responsiveness & WCAG 2.1 AA Accessibility**
+  - Enforce minimum 44×44px touch targets on buttons, inputs, selects, and checkboxes
+  - Add visible keyboard focus rings (`focus-visible:ring-2 focus-visible:ring-primary`, `3px outline`)
+  - Add `role="checkbox"`, `aria-checked`, and accessible labels to activity checklist
+  - Audit and eliminate horizontal overflow across 320px, 375px, 768px, and 1280px viewports (fixed tablet navbar wrapping)
+
+- [x] **TASK-19: Final Phase 3 Production Readiness & Verification**
+  - Run full test suite: Vitest (60 tests), Pytest (8 tests), TypeScript compilation (0 errors), production build (clean client, SSR, Nitro)
+  - Conduct strict boundary audit: `store.tsx`, `api.ts`, protected backend routers, and SQLite schemas remain 100% untouched
+  - Real browser end-to-end verification of offline queueing, reload persistence, online auto-sync, and duplicate prevention
+  - Synchronize project documentation (`PRD.md`, `progress.txt`, `STATE.md`)
+
+### Phase 4: Pedagogical Adaptations, Domain Reflections, Backend Contract & Project Completion
+
+- [x] **TASK-20: Scaffolded Pedagogical Adaptations for `tried_needs_support` (Task 4.4)**
+  - Detect `tried_needs_support` outcomes in child practice history on both frontend and backend
+  - In `src/lib/recommend.ts`, inject explicit `scaffoldingNote` and link to prior activity with simplified micro-steps
+  - In `backend/app/ai_recommendations.py`, add support adaptation clause to teaching strategies and update LLM prompt rules
+  - Surface visual Scaffolding Adaptation cards in `src/routes/children.$id.tsx` and `src/routes/recommendations.tsx`
+
+- [x] **TASK-21: Domain Practice Summary & Trial Reflection in Child Profile (Task 4.5)**
+  - Implement `summarizeChildPracticeHistory` pure function in `src/lib/activityLogs.ts`
+  - Compute total trials, helped counts, needs-support counts, and domain breakdowns across both synced and queued trials
+  - Render compact reflection summary bar in `src/routes/children.$id.tsx` above trial timeline with domain tags
+
+- [-] **TASK-22: [REMOVED] Vernacular Micro-Copy (Task 4.6)**
+  - Removed from Phase 4 scope per user direction; entire UI, buttons, timeline, cards, and summaries remain strictly English-only
+
+- [x] **TASK-23: Backend Architecture Contract Alignment (Task 4.1)**
+  - Update `docs/BACKEND_CONTRACT.md` documenting Member 3 endpoints: `POST /api/recommendations/personalized` and `GET /api/recommendations/status`
+  - Document Pydantic schemas (`PersonalizedRecommendationRequest`, `RecommendationPedagogy`, `ChildRecommendationResult`, `AIStatusResponse`)
+  - Detail 2-active recommendation invariant, completed activity exclusion, and scaffolding adaptation rules
+  - Clarify Member 3 endpoint ownership and preserve `ActivityLogCreate` validation rule as pending Bhakti's approval
+
+- [x] **TASK-24: Full Regression Testing & Project Boundary Audit (Task 4.2)**
+  - Run full test suites: Vitest (89 tests passing across 5 suites), Pytest (26 tests passing across 2 suites)
+  - Verify zero TypeScript compiler errors (`npx tsc --noEmit` exited 0)
+  - Verify clean production build (`npm run build` client, SSR, and Nitro server)
+  - Conduct strict boundary audit: `store.tsx` untouched, `api.ts` does not exist, protected routers untouched, database schemas/tables untouched
+
+- [x] **TASK-25: Project Documentation Synchronization & Final Hand-Off (Task 4.3)**
+  - Synchronize `docs/tasks/PRD.md`, `docs/tasks/progress.txt`, and `.planning/STATE.md`
+  - Prepare comprehensive final hand-off summary

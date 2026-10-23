@@ -11,6 +11,7 @@ import {
   type Tone,
 } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { AlertCircle, CheckCircle2, CloudOff, RefreshCw } from "lucide-react";
 
 export function PageHeader({
   eyebrow,
@@ -39,24 +40,11 @@ export function PageHeader({
   );
 }
 
+import { ChildAvatar } from "./ChildAvatar";
+
 export function Avatar({ child, size = "md" }: { child: Child; size?: "sm" | "md" | "lg" }) {
-  const s =
-    size === "lg"
-      ? "h-20 w-20 text-5xl"
-      : size === "sm"
-        ? "h-10 w-10 text-2xl"
-        : "h-14 w-14 text-3xl";
-  return (
-    <div
-      className={cn(
-        "wiggle flex shrink-0 items-center justify-center rounded-full ring-4 ring-card shadow-soft",
-        toneBg[child.tone],
-        s,
-      )}
-    >
-      {child.avatar}
-    </div>
-  );
+  const mappedSize = size === "lg" ? "xl" : size === "sm" ? "sm" : "md";
+  return <ChildAvatar child={child} size={mappedSize} />;
 }
 
 export function LevelDots({ score, tone = "primary" }: { score: Score; tone?: Tone }) {
@@ -153,5 +141,105 @@ export function StartButton({
     >
       ▶ {label}
     </Link>
+  );
+}
+
+export type SyncStatusBadgeProps = {
+  pendingCount: number;
+  failedCount: number;
+  isSyncing?: boolean | undefined;
+  onSync?: (() => void | Promise<void>) | undefined;
+  onDismissFailed?: (() => void | Promise<void>) | undefined;
+  isPersistent?: boolean | undefined;
+  storageWarning?: string | undefined;
+  className?: string | undefined;
+};
+
+/**
+ * Minimal, accessible sync status indicator for activity trials.
+ * Features aria-live="polite" announcements, WCAG AA contrast, and
+ * inline recovery actions.
+ */
+export function SyncStatusBadge({
+  pendingCount,
+  failedCount,
+  isSyncing = false,
+  onSync,
+  onDismissFailed,
+  isPersistent = true,
+  storageWarning,
+  className,
+}: SyncStatusBadgeProps) {
+  const totalUnsynced = pendingCount + failedCount;
+
+  return (
+    <div
+      className={cn("inline-flex flex-wrap items-center gap-2 text-xs", className)}
+      role="region"
+      aria-label="Activity trial synchronization status"
+    >
+      <span role="status" aria-live="polite" className="inline-flex items-center gap-1.5">
+        {isSyncing ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-soft text-teal px-2.5 py-1 font-bold border border-teal/30">
+            <RefreshCw className="h-3.5 w-3.5 animate-spin text-teal" aria-hidden="true" />
+            <span>
+              Syncing {totalUnsynced} trial{totalUnsynced === 1 ? "" : "s"}...
+            </span>
+          </span>
+        ) : failedCount > 0 ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-coral-soft text-coral px-2.5 py-1 font-bold border border-coral/30">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>
+              {failedCount} failed to sync{pendingCount > 0 ? ` (${pendingCount} queued)` : ""}
+            </span>
+          </span>
+        ) : pendingCount > 0 ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-sun-soft text-foreground px-2.5 py-1 font-bold border border-sun/50">
+            <RefreshCw className="h-3.5 w-3.5 shrink-0 text-sun-foreground" aria-hidden="true" />
+            <span>
+              {pendingCount} offline trial{pendingCount === 1 ? "" : "s"} waiting
+            </span>
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-soft text-primary px-2.5 py-1 font-bold border border-primary/30">
+            <CheckCircle2 className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+            <span>All trials synced</span>
+          </span>
+        )}
+      </span>
+
+      {!isPersistent && (
+        <span
+          className="inline-flex items-center gap-1 rounded-full bg-sun-soft/60 text-foreground px-2 py-0.5 text-[0.7rem] font-semibold border border-sun/40"
+          title={storageWarning || "IndexedDB unavailable; stored in temporary memory only"}
+        >
+          <CloudOff className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+          <span>Session only</span>
+        </span>
+      )}
+
+      {onSync && totalUnsynced > 0 && !isSyncing && (
+        <button
+          type="button"
+          onClick={onSync}
+          className="btn btn-ghost inline-flex min-h-[44px] items-center gap-1.5 px-3 py-2 text-xs font-bold text-primary hover:bg-primary-soft focus-visible:ring-2 focus-visible:ring-primary"
+          aria-label={failedCount > 0 ? "Retry syncing failed trials" : "Sync offline trials now"}
+        >
+          <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>{failedCount > 0 ? "Retry sync" : "Sync now"}</span>
+        </button>
+      )}
+
+      {onDismissFailed && failedCount > 0 && !isSyncing && (
+        <button
+          type="button"
+          onClick={onDismissFailed}
+          className="btn btn-ghost inline-flex min-h-[44px] items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Dismiss failed trials"
+        >
+          <span>Clear failed</span>
+        </button>
+      )}
+    </div>
   );
 }
