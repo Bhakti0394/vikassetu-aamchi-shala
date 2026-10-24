@@ -76,3 +76,10 @@ app.dependency_overrides[get_db] = override_get_db
 def client():
     with TestClient(app) as test_client:
         yield test_client
+
+@pytest.fixture(autouse=True)
+def reset_recommendation_cache():
+    from app.routers.recommendations import clear_recommendation_cache
+    clear_recommendation_cache()
+    yield
+    clear_recommendation_cache()

@@ -27,8 +27,17 @@ def get_groq_api_key() -> Optional[str]:
     )
 
 def get_groq_model() -> str:
-    """Configurable model ID, default to verified available model."""
-    return os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+    """Configurable model ID, default to verified available model with generous token quotas."""
+    return os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
+
+def get_groq_fallback_models() -> List[str]:
+    """Returns candidate Groq models in priority order for automatic rate-limit failover."""
+    primary = get_groq_model()
+    candidates = [primary]
+    for alt in ["openai/gpt-oss-20b", "openai/gpt-oss-120b"]:
+        if alt not in candidates:
+            candidates.append(alt)
+    return candidates
 
 class RecommendationPedagogy(BaseModel):
     activity_id: str
@@ -201,20 +210,21 @@ async def generate_ai_recommendation(
         ],
     }
 
-    # Candidate catalog with only necessary activity info
+    # Select top candidate activities (up to 4) to keep token size compact and prevent rate limits
+    top_candidates = candidate_activities[:4]
     candidates_data = [
         {
             "id": act["id"],
             "name": act["name"],
             "difficulty": act.get("difficulty"),
             "minutes": act.get("minutes"),
-            "skills": act.get("skills", []),
-            "steps": act.get("steps", []),
+            "skills": act.get("skills", [])[:3],
+            "steps": act.get("steps", [])[:3],
         }
-        for act in candidate_activities
+        for act in top_candidates
     ]
 
-    valid_activity_ids = {act["id"] for act in candidate_activities}
+    valid_activity_ids = {act["id"] for act in top_candidates}
 
     system_prompt = (
         "You are an expert early childhood pedagogical specialist for the VikasSetu preschool learning platform.\n"
@@ -257,89 +267,105 @@ Respond with a JSON object with this exact structure:
 }}
 """
 
-    model_name = get_groq_model()
+    models_to_try = get_groq_fallback_models()
+    last_failure_reason = None
 
-    try:
-        async with httpx.AsyncClient(timeout=8.0) as client:
-            response = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": model_name,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    "response_format": {"type": "json_object"},
-                    "temperature": 0.3,
-                },
-            )
+    for model_name in models_to_try:
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                response = await client.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": model_name,
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt},
+                        ],
+                        "response_format": {"type": "json_object"},
+                        "temperature": 0.3,
+                    },
+                )
 
-        if response.status_code != 200:
-            logger.warning(f"Groq API returned HTTP {response.status_code}. Using fallback.")
-            return build_deterministic_item(
-                child_id, domain, score, candidate_activities[0],
-                evidence_notes, child_strengths, child_needs, recent_logs
-            )
+            if response.status_code == 200:
+                payload = response.json()
+                raw_content = payload["choices"][0]["message"]["content"]
+                data = json.loads(raw_content)
 
-        payload = response.json()
-        raw_content = payload["choices"][0]["message"]["content"]
-        data = json.loads(raw_content)
+                # Validate activity ID is in valid candidates and ensure all fields match it
+                chosen_id = data.get("activity_id")
+                was_hallucinated = chosen_id not in valid_activity_ids
+                matching_act = next((a for a in top_candidates if a["id"] == chosen_id), None)
+                if not matching_act:
+                    logger.warning(
+                        f"Groq ({model_name}) returned activity_id '{chosen_id}' not in candidate list. Correcting to first candidate."
+                    )
+                    matching_act = top_candidates[0]
+                    chosen_id = matching_act["id"]
 
-        # Validate activity ID is in valid candidates and ensure all fields match it
-        chosen_id = data.get("activity_id")
-        was_hallucinated = chosen_id not in valid_activity_ids
-        matching_act = next((a for a in candidate_activities if a["id"] == chosen_id), None)
-        if not matching_act:
-            logger.warning(
-                f"Groq returned activity_id '{chosen_id}' not in candidate list. Correcting to first candidate."
-            )
-            matching_act = candidate_activities[0]
-            chosen_id = matching_act["id"]
+                activity_name = matching_act.get("name", "Learning Activity")
+                raw_title = str(data.get("title", "")).strip()
+                if was_hallucinated or not raw_title:
+                    title = f"Guided Practice: {activity_name}"
+                else:
+                    title = raw_title
 
-        activity_name = matching_act.get("name", "Learning Activity")
-        raw_title = str(data.get("title", "")).strip()
-        if was_hallucinated or not raw_title:
-            title = f"Guided Practice: {activity_name}"
-        else:
-            title = raw_title
+                teacher_steps = list(data.get("teacher_steps", []))
+                if not teacher_steps or len(teacher_steps) < 2:
+                    teacher_steps = list(matching_act.get("steps", []))
 
-        teacher_steps = list(data.get("teacher_steps", []))
-        if not teacher_steps or len(teacher_steps) < 2:
-            teacher_steps = list(matching_act.get("steps", []))
+                focus_skills = list(data.get("focus_skills", []))
+                if not focus_skills:
+                    focus_skills = list(matching_act.get("skills", []))
 
-        focus_skills = list(data.get("focus_skills", []))
-        if not focus_skills:
-            focus_skills = list(matching_act.get("skills", []))
+                return RecommendationPedagogy(
+                    activity_id=chosen_id,
+                    domain=matching_act.get("domain", domain),
+                    title=title,
+                    reason=str(data.get("reason", f"Personalized learning recommendation for {activity_name}.")),
+                    observed_strengths=list(data.get("observed_strengths", child_strengths)),
+                    focus_skills=focus_skills,
+                    teaching_strategy=str(data.get("teaching_strategy", "")),
+                    teacher_steps=teacher_steps,
+                    success_criteria=str(data.get("success_criteria", "")),
+                    next_step_if_successful=str(data.get("next_step_if_successful", "")),
+                    next_step_if_support_needed=str(data.get("next_step_if_support_needed", "")),
+                    evidence=list(data.get("evidence", evidence_notes[:2])),
+                    is_ai_generated=True,
+                )
 
-        return RecommendationPedagogy(
-            activity_id=chosen_id,
-            domain=matching_act.get("domain", domain),
-            title=title,
-            reason=str(data.get("reason", f"Personalized learning recommendation for {activity_name}.")),
-            observed_strengths=list(data.get("observed_strengths", child_strengths)),
-            focus_skills=focus_skills,
-            teaching_strategy=str(data.get("teaching_strategy", "")),
-            teacher_steps=teacher_steps,
-            success_criteria=str(data.get("success_criteria", "")),
-            next_step_if_successful=str(data.get("next_step_if_successful", "")),
-            next_step_if_support_needed=str(data.get("next_step_if_support_needed", "")),
-            evidence=list(data.get("evidence", evidence_notes[:2])),
-            is_ai_generated=True,
-        )
+            elif response.status_code == 429:
+                err_detail = ""
+                try:
+                    err_detail = response.json().get("error", {}).get("message", "")
+                except Exception:
+                    pass
+                logger.warning(
+                    f"Groq API returned HTTP 429 (rate limit exceeded) for model '{model_name}': {err_detail}. Trying fallback model..."
+                )
+                last_failure_reason = f"HTTP 429 Rate Limit on {model_name}"
+                continue
+            else:
+                logger.warning(
+                    f"Groq API returned HTTP {response.status_code} for model '{model_name}'. Trying fallback model..."
+                )
+                last_failure_reason = f"HTTP {response.status_code} on {model_name}"
+                continue
 
-    except (httpx.TimeoutException, httpx.RequestError) as net_err:
-        logger.warning(f"Network error or timeout connecting to Groq: {net_err}. Using fallback.")
-        return build_deterministic_item(
-            child_id, domain, score, candidate_activities[0],
-            evidence_notes, child_strengths, child_needs, recent_logs
-        )
-    except (json.JSONDecodeError, KeyError, Exception) as parse_err:
-        logger.warning(f"Error parsing Groq response: {parse_err}. Using fallback.")
-        return build_deterministic_item(
-            child_id, domain, score, candidate_activities[0],
-            evidence_notes, child_strengths, child_needs, recent_logs
-        )
+        except (httpx.TimeoutException, httpx.RequestError) as net_err:
+            logger.warning(f"Network error or timeout with model '{model_name}': {net_err}. Trying fallback model...")
+            last_failure_reason = f"Network timeout on {model_name}"
+            continue
+        except (json.JSONDecodeError, KeyError, Exception) as parse_err:
+            logger.warning(f"Error parsing Groq response from model '{model_name}': {parse_err}. Trying fallback model...")
+            last_failure_reason = f"JSON parse error on {model_name}"
+            continue
+
+    logger.warning(f"All Groq model attempts failed ({last_failure_reason}). Using deterministic fallback.")
+    return build_deterministic_item(
+        child_id, domain, score, candidate_activities[0],
+        evidence_notes, child_strengths, child_needs, recent_logs
+    )

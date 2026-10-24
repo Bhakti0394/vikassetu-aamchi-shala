@@ -12,6 +12,7 @@ import {
 import { activityOf, domainOf, toneBg } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { Avatar, SyncStatusBadge } from "@/components/ui-kit";
+import { ActivityIcon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import {
   saveActivityLog,
@@ -66,6 +67,7 @@ function ActivityRun() {
   const [done, setDone] = useState<number[]>([]);
   const [note, setNote] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{
     type: "success" | "queued" | "error";
     message: string;
@@ -158,8 +160,6 @@ function ActivityRun() {
     }
   };
 
-  const [isSyncing, setIsSyncing] = useState(false);
-
   const handleManualSync = async () => {
     setIsSyncing(true);
     try {
@@ -217,13 +217,15 @@ function ActivityRun() {
       </Link>
 
       {/* Header section with Activity Details */}
-      <section className={cn("rounded-3xl p-8 text-center", d ? toneBg[d.tone] : "bg-muted")}>
-        <div className="text-7xl">{a.emoji}</div>
-        <p className="mt-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">
+      <section className="rounded-[16px] border border-[#E2D9C8] bg-[#FFFDF8] p-8 text-center shadow-[0_1px_2px_rgba(25,63,50,0.06)]">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[14px] bg-[#DCE9DD] text-[#193F32] mb-3">
+          <ActivityIcon activity={a} size={32} />
+        </div>
+        <p className="mt-1 text-sm font-bold uppercase tracking-wide text-[#5F6B62]">
           {d?.name ?? a.domain}
         </p>
-        <h1 className="text-4xl font-bold">{a.name}</h1>
-        <p className="mt-2 flex items-center justify-center gap-1 font-semibold text-muted-foreground">
+        <h1 className="font-display text-3xl sm:text-4xl font-bold text-[#193F32]">{a.name}</h1>
+        <p className="mt-2 flex items-center justify-center gap-1 font-semibold text-[#5F6B62]">
           <Clock className="h-4 w-4" /> {a.minutes} min · {a.difficulty}
         </p>
 
