@@ -152,4 +152,46 @@ describe("Observation Management API Client", () => {
       })
     ).rejects.toThrow("Child 'nonexistent' not found");
   });
+
+  it("fetchActivities fetches all 21 activities from the API endpoint", async () => {
+    const mock21Activities = Array.from({ length: 21 }, (_, i) => ({
+      id: `act-${i + 1}`,
+      name: `Activity ${i + 1}`,
+      domain: i < 5 ? "alphabet" : i < 9 ? "numbers" : i < 14 ? "colours" : i < 17 ? "art" : "stories",
+      difficulty: "Easy",
+      minutes: 10,
+      emoji: "⭐",
+      skills: ["Skill A"],
+      steps: ["Step 1"],
+      forLevel: [1, 2],
+    }));
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mock21Activities,
+    } as Response);
+
+    const activities = await api.fetchActivities();
+    expect(activities).toHaveLength(21);
+    expect(globalThis.fetch).toHaveBeenCalledWith("http://localhost:8000/api/activities");
+  });
+
+  it("fetchActivities passes domain filter query param when provided", async () => {
+    const mockNumberActivities = [
+      { id: "count-match", name: "Count & Match", domain: "numbers" },
+      { id: "bead-counting", name: "Bead Counting", domain: "numbers" },
+    ];
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockNumberActivities,
+    } as Response);
+
+    const activities = await api.fetchActivities("numbers");
+    expect(activities).toEqual(mockNumberActivities);
+    expect(globalThis.fetch).toHaveBeenCalledWith("http://localhost:8000/api/activities?domain=numbers");
+  });
 });
+

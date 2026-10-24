@@ -1,245 +1,419 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus, PenLine, ArrowRight } from "lucide-react";
-import { useStore, isPresentToday } from "@/lib/store";
+import { useState } from "react";
 import {
-  DOMAINS,
-  needsAttention,
-  recommendFor,
-  domainOf,
-  toneBg,
-  toneFill,
-  avgLevel,
-} from "@/lib/data";
-import { Avatar, DomainChip } from "@/components/ui-kit";
-import { cn } from "@/lib/utils";
-import { useEffect, useState } from "react";
-import heroAsset from "@/assets/bloom-hero-teacher.png.asset.json";
-
-function CountUp({ value }: { value: number }) {
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    let raf = 0;
-    const start = performance.now();
-    const tick = (t: number) => {
-      const p = Math.min(1, (t - start) / 1100);
-      setN(Math.round(value * (1 - Math.pow(1 - p, 3))));
-      if (p < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [value]);
-  return <>{n}</>;
-}
+  ArrowRight,
+  CalendarDays,
+  Check,
+  ChevronRight,
+  Eye,
+  Heart,
+  Menu,
+  Sparkles,
+  X,
+} from "lucide-react";
+import {
+  AlphabetDoodle,
+  BlocksDoodle,
+  GardenDoodle,
+  HouseDoodle,
+  LeafDoodle,
+  LeafMark,
+  NumbersDoodle,
+  PaintDoodle,
+  ShapesDoodle,
+  StoryBookDoodle,
+  SunDoodle,
+} from "@/components/illustrations";
+import "@/styles/landing.css";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard — VikasSetu" },
+      { title: "VikasSetu – An Observation-Led Companion for Early Learning" },
       {
         name: "description",
-        content: "Today's focus: which children need support and what activity to do next.",
+        content:
+          "Small steps build big dreams. Give every early learner the attention, activities, and encouragement they need to grow.",
       },
-      { property: "og:title", content: "Dashboard — VikasSetu" },
+      { property: "og:title", content: "VikasSetu – An Observation-Led Companion for Early Learning" },
       {
         property: "og:description",
-        content: "Today's focus: which children need support and what activity to do next.",
+        content:
+          "Small steps build big dreams. Give every early learner the attention, activities, and encouragement they need to grow.",
       },
     ],
   }),
-  component: Dashboard,
+  component: LandingPage,
 });
 
-function Dashboard() {
-  const { children, observations, attendance, completed } = useStore();
-  const present = children.filter((c) => isPresentToday(attendance, c.id)).length;
-  const attention = children.filter(needsAttention);
-  const focus = [...children].sort((a, b) => avgLevel(a) - avgLevel(b)).slice(0, 3);
-  const hour = new Date().getHours();
-  const greet = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+const benefits = [
+  {
+    number: "01",
+    icon: Eye,
+    title: "Understand every child",
+    copy: "Keep child profiles and recorded observations together, so the small details that matter stay close at hand.",
+    accent: "coral",
+  },
+  {
+    number: "02",
+    icon: CalendarDays,
+    title: "Keep the classroom organised",
+    copy: "Bring classroom information and attendance into one calm, practical place for the day-to-day work.",
+    accent: "sage",
+  },
+  {
+    number: "03",
+    icon: Sparkles,
+    title: "Find meaningful activities",
+    copy: "When relevant child information is available, activity suggestions can help you choose a thoughtful next step.",
+    accent: "yellow",
+  },
+  {
+    number: "04",
+    icon: Heart,
+    title: "Notice progress over time",
+    copy: "Use observations and activity-trial notes to reflect on what a child is exploring and where to go next.",
+    accent: "teal",
+  },
+];
 
-  const stats = [
-    { label: "Total Children", value: children.length, emoji: "🧒", tone: "bg-teal-soft" },
-    { label: "Present Today", value: present, emoji: "✅", tone: "bg-primary-soft" },
-    { label: "Need Attention", value: attention.length, emoji: "💛", tone: "bg-sun-soft" },
-    { label: "Activities Done", value: completed, emoji: "⭐", tone: "bg-coral-soft" },
-  ];
+const domains = [
+  {
+    title: "Alphabet & Language",
+    copy: "Build a love of words through sounds, letters, conversations, and early mark-making.",
+    illustration: AlphabetDoodle,
+    tone: "domain-coral",
+  },
+  {
+    title: "Numbers & Counting",
+    copy: "Make quantity visible with counting, matching, comparing, and everyday number talk.",
+    illustration: NumbersDoodle,
+    tone: "domain-yellow",
+  },
+  {
+    title: "Colours & Shapes",
+    copy: "Notice patterns, colours, lines, and shapes as children make sense of the world around them.",
+    illustration: ShapesDoodle,
+    tone: "domain-sage",
+  },
+  {
+    title: "Art & Creativity",
+    copy: "Leave room for experimenting with materials, movement, mark-making, and imagination.",
+    illustration: PaintDoodle,
+    tone: "domain-teal",
+  },
+  {
+    title: "Stories, Habits & Games",
+    copy: "Grow language, routines, social learning, and joy through stories, songs, and shared play.",
+    illustration: StoryBookDoodle,
+    tone: "domain-paper",
+  },
+];
+
+const playIdeas = [
+  {
+    title: "Count & Match",
+    domain: "Numbers & Counting",
+    copy: "A simple invitation to compare groups and talk through what children notice.",
+    illustration: BlocksDoodle,
+    tone: "activity-coral",
+  },
+  {
+    title: "Alphabet Match",
+    domain: "Alphabet & Language",
+    copy: "Pair familiar letters with pictures, sounds, and the words children already know.",
+    illustration: AlphabetDoodle,
+    tone: "activity-yellow",
+  },
+  {
+    title: "Leaf Printing",
+    domain: "Art & Creativity",
+    copy: "Turn a walk outside into an open-ended way to notice texture, shape, and colour.",
+    illustration: LeafDoodle,
+    tone: "activity-sage",
+  },
+  {
+    title: "Story Circle",
+    domain: "Stories, Habits & Games",
+    copy: "Make space for retelling, listening, movement, and children’s own questions.",
+    illustration: StoryBookDoodle,
+    tone: "activity-teal",
+  },
+];
+
+const gallery = [
+  { title: "A garden to share", illustration: HouseDoodle, className: "artwork-one" },
+  { title: "Shapes in the sunshine", illustration: SunDoodle, className: "artwork-two" },
+  { title: "A growing little world", illustration: GardenDoodle, className: "artwork-three" },
+  { title: "Counting colours", illustration: BlocksDoodle, className: "artwork-four" },
+];
+
+function LandingPage() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = () => setMenuOpen(false);
 
   return (
-    <div className="fade-up space-y-8">
-      <section className="hero-gradient relative overflow-hidden rounded-3xl p-7 text-primary-foreground shadow-lift sm:p-10">
-        <div className="blob pointer-events-none absolute -right-16 -top-20 h-72 w-72 bg-sun opacity-40" />
-        <div className="blob pointer-events-none absolute -bottom-24 left-1/3 h-64 w-64 bg-primary-foreground opacity-10" />
-        <span className="float pointer-events-none absolute left-[46%] top-6 hidden text-3xl lg:block">
-          ⭐
-        </span>
-        <span className="float-slow pointer-events-none absolute bottom-8 left-[52%] hidden text-2xl lg:block">
-          ✏️
-        </span>
-        <div className="relative grid items-center gap-6 lg:grid-cols-[1.1fr_1fr]">
-          <div className="stagger">
-            <p className="inline-flex items-center gap-2 rounded-full bg-primary-foreground/15 px-3 py-1 text-sm font-bold backdrop-blur">
-              <span className="pulse-ring h-2 w-2 rounded-full bg-sun" /> {greet}, Teacher 👋
-            </p>
-            <h1 className="mt-4 text-4xl font-extrabold leading-[1.05] sm:text-5xl">
-              What should I do today?
-            </h1>
-            <p className="mt-3 max-w-md text-lg opacity-90">
-              Every child learns differently. {focus.length} children could use a little extra
-              support today — start with them.
-            </p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Link to="/progress" className="btn btn-sun shine shadow-lift">
-                <PenLine className="h-4 w-4" /> Record Observation
-              </Link>
-              <Link
-                to="/children"
-                search={{ add: true }}
-                className="btn shine bg-card text-foreground hover:-translate-y-0.5"
-              >
-                <Plus className="h-4 w-4" /> Add Child
-              </Link>
-            </div>
-          </div>
-          <img
-            src={heroAsset.url}
-            alt="Teacher playing learning games with playgroup children"
-            width={1024}
-            height={896}
-            className="float-slow relative mx-auto -mb-10 max-h-48 w-full max-w-[15rem] object-contain drop-shadow-2xl sm:max-h-none sm:max-w-md lg:-mb-14 lg:-mt-4"
-          />
-        </div>
-      </section>
-
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4 stagger">
-        {stats.map((s) => (
-          <div key={s.label} className="card-soft tilt shine p-5">
-            <div
-              className={cn(
-                "wiggle mb-3 flex h-12 w-12 items-center justify-center rounded-2xl text-2xl",
-                s.tone,
-              )}
-            >
-              {s.emoji}
-            </div>
-            <p className="font-display text-4xl font-bold">
-              <CountUp value={s.value} />
-            </p>
-            <p className="text-sm font-semibold text-muted-foreground">{s.label}</p>
-          </div>
-        ))}
-      </section>
-
-      <section>
-        <div className="mb-4 flex items-end justify-between">
-          <div>
-            <h2 className="text-3xl font-bold">
-              Today's <span className="text-gradient">Focus</span>
-            </h2>
-            <p className="text-muted-foreground">Children who may need additional support</p>
-          </div>
-          <Link
-            to="/recommendations"
-            className="hidden items-center gap-1 font-bold text-primary sm:flex"
-          >
-            All recommendations <ArrowRight className="h-4 w-4" />
+    <div className="landing-page">
+      <header className="site-header">
+        <div className="site-container nav-shell">
+          <Link to="/" className="brand" onClick={closeMenu} aria-label="VikasSetu – Aamchi Shala home">
+            <span className="brand-mark"><LeafMark /></span>
+            <span className="brand-copy">
+              <strong>VikasSetu</strong>
+              <span>Aamchi Shala</span>
+            </span>
           </Link>
+          <button
+            className="menu-toggle"
+            type="button"
+            aria-expanded={menuOpen}
+            aria-controls="primary-navigation"
+            aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            {menuOpen ? <X size={22} strokeWidth={1.8} /> : <Menu size={22} strokeWidth={1.8} />}
+          </button>
+          <nav id="primary-navigation" className={`primary-nav ${menuOpen ? "is-open" : ""}`} aria-label="Primary navigation">
+            <a href="#moments" onClick={closeMenu}>Why VikasSetu</a>
+            <a href="#domains" onClick={closeMenu}>Learning paths</a>
+            <a href="#activities" onClick={closeMenu}>Activities</a>
+            <a href="#how-it-works" onClick={closeMenu}>How it works</a>
+            <Link to="/dashboard" className="nav-login" onClick={closeMenu}>Teacher Portal</Link>
+            <Link to="/dashboard" className="button button-small button-outline-forest" onClick={closeMenu}>
+              Enter App <ArrowRight size={15} />
+            </Link>
+          </nav>
         </div>
-        <div className="grid gap-4 md:grid-cols-3 stagger">
-          {focus.map((ch) => {
-            const rec = recommendFor(ch, observations)[0];
-            if (!rec) return null;
-            const dom = domainOf(rec.domain);
-            return (
-              <div key={ch.id} className="card-soft tilt shine flex flex-col p-5">
-                <Link to="/children/$id" params={{ id: ch.id }} className="flex items-center gap-3">
-                  <Avatar child={ch} />
+      </header>
+
+      <main>
+        <section className="hero-section" aria-labelledby="hero-title">
+          <div className="site-container hero-grid">
+            <div className="hero-copy rise-in">
+              <p className="eyebrow"><span className="eyebrow-dot" /> An observation-led companion for early learning</p>
+              <h1 id="hero-title">Small steps<br className="hero-br" />build <em>big dreams.</em></h1>
+              <p className="hero-lede">Every child learns differently. Give every learner the attention, activities, and encouragement they need to grow.</p>
+              <div className="hero-actions">
+                <Link to="/dashboard" className="button button-primary">
+                  Launch VikasSetu <ArrowRight size={17} />
+                </Link>
+                <a className="button button-quiet" href="#activities">Explore activities <ChevronRight size={17} /></a>
+              </div>
+              <div className="trust-note"><span className="trust-check"><Check size={13} /></span> Made for preschool and Anganwadi teachers.</div>
+            </div>
+            <div className="hero-art rise-in" aria-label="A teacher speaking to a classroom of attentive young children">
+              <div className="hero-art-frame">
+                <picture>
+                  <source srcSet="/classroom-hero-sketch.webp" type="image/webp" />
+                  <img
+                    src="/classroom-hero-sketch.png"
+                    alt="A teacher speaking to a classroom of attentive young children"
+                    width={1086}
+                    height={712}
+                    loading="eager"
+                  />
+                </picture>
+              </div>
+            </div>
+          </div>
+          <div className="hero-rule site-container">
+            <span>For the noticing, the trying, and the tiny breakthroughs</span>
+            <span className="rule-line" />
+            <span className="rule-leaf"><LeafDoodle /></span>
+          </div>
+        </section>
+
+        <section className="moments-section section-pad" id="moments" aria-labelledby="moments-title">
+          <div className="site-container">
+            <div className="section-intro split-intro">
+              <div>
+                <p className="section-kicker">A little more room to notice</p>
+                <h2 id="moments-title">Made for the moments <em>that matter.</em></h2>
+              </div>
+              <p>Every day brings new opportunities to notice, encourage, and support a child’s learning. VikasSetu keeps the useful context close, while you stay in the lead.</p>
+            </div>
+            <div className="benefit-grid">
+              {benefits.map(({ number, icon: Icon, title, copy, accent }) => (
+                <article className={`benefit-item accent-${accent}`} key={title}>
+                  <div className="benefit-topline"><span>{number}</span><Icon size={20} strokeWidth={1.7} /></div>
+                  <h3>{title}</h3>
+                  <p>{copy}</p>
+                  <span className="benefit-underline" />
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="domains-section section-pad" id="domains" aria-labelledby="domains-title">
+          <div className="site-container">
+            <div className="section-intro centered-intro">
+              <p className="section-kicker">A wider view of learning</p>
+              <h2 id="domains-title">Many ways to learn. <em>Every child’s own journey.</em></h2>
+              <p>Learning is not one straight line. These five familiar paths make it easier to notice what is inviting a child in today.</p>
+            </div>
+            <div className="domain-grid">
+              {domains.map(({ title, copy, illustration: Illustration, tone }) => (
+                <Link to="/activities" key={title} className={`domain-card ${tone}`}>
                   <div>
-                    <p className="font-display text-xl font-bold">{ch.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Level {rec.level}/3 in {dom?.short ?? rec.domain}
-                    </p>
+                    <div className="domain-art"><Illustration /></div>
+                    <h3>{title}</h3>
+                    <p>{copy}</p>
+                  </div>
+                  <span className="card-arrow"><ArrowRight size={14} /></span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="activities-section section-pad" id="activities" aria-labelledby="activities-title">
+          <div className="site-container">
+            <div className="section-intro split-intro activity-heading">
+              <div>
+                <p className="section-kicker">Playful ideas ready to go</p>
+                <h2 id="activities-title">Low-prep activities for <em>busy days.</em></h2>
+              </div>
+              <div>
+                <p>Simple materials, low setup, and plenty of room for conversation. Use them as whole-group invitations or small-group moments.</p>
+                <Link to="/activities" className="text-link">Browse full activity hub <ArrowRight size={14} /></Link>
+              </div>
+            </div>
+            <div className="activity-grid">
+              {playIdeas.map(({ title, domain, copy, illustration: Illustration, tone }) => (
+                <Link to="/activities" key={title} className={`activity-card ${tone}`}>
+                  <div className="activity-visual"><Illustration /></div>
+                  <div className="activity-content">
+                    <p className="activity-domain">{domain}</p>
+                    <h3>{title}</h3>
+                    <p>{copy}</p>
+                    <span className="activity-link-note">Open activity <ArrowRight size={12} /></span>
                   </div>
                 </Link>
-                <div className="mt-4 space-y-2 text-sm">
-                  <DomainChip id={rec.domain} />
-                  <p>
-                    <span className="font-bold">Need:</span> {ch.needs[0] ?? "More practice"}
-                  </p>
-                </div>
-                <div className="mt-4 flex-1 rounded-xl bg-muted p-3 text-sm">
-                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                    Suggested activity
-                  </p>
-                  <p className="font-bold">
-                    {rec.activity.emoji} {rec.activity.name}
-                  </p>
-                </div>
-                <Link
-                  to="/activities/$id"
-                  params={{ id: rec.activity.id }}
-                  search={{ child: ch.id }}
-                  className="btn btn-primary mt-4"
-                >
-                  ▶ Start
-                </Link>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+              ))}
+            </div>
+            <p className="data-note">
+              <span className="data-note-mark">i</span>
+              <span>All activity plans align with the 5 Early Childhood Development learning domains: Alphabet, Numbers, Colours & Shapes, Art, and Stories.</span>
+            </p>
+          </div>
+        </section>
 
-      <section className="card-soft p-6">
-        <h2 className="text-2xl font-bold">Class learning overview</h2>
-        <p className="mb-6 text-muted-foreground">
-          How many children are at each level, by learning area
-        </p>
-        <div className="space-y-5">
-          {DOMAINS.map((d) => {
-            const counts = [1, 2, 3].map(
-              (lvl) => children.filter((c) => c.scores[d.id] === lvl).length,
-            );
-            const total = children.length || 1;
-            return (
-              <div key={d.id}>
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="font-bold">
-                    {d.emoji} {d.name}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {counts[2]} of {children.length} doing well
-                  </span>
-                </div>
-                <div className="flex h-4 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="grow-x bg-coral"
-                    style={{ width: `${((counts[0] ?? 0) / total) * 100}%` }}
-                  />
-                  <div
-                    className="grow-x bg-sun"
-                    style={{ width: `${((counts[1] ?? 0) / total) * 100}%` }}
-                  />
-                  <div
-                    className={cn("grow-x", toneFill.primary)}
-                    style={{ width: `${((counts[2] ?? 0) / total) * 100}%` }}
-                  />
+        <section className="gallery-section section-pad" aria-labelledby="gallery-title">
+          <div className="site-container gallery-layout">
+            <div className="gallery-copy">
+              <p className="section-kicker">Every mark tells a story</p>
+              <h2 id="gallery-title">A gallery of <em>little attempts.</em></h2>
+              <p>When learning is visible, children feel seen and teachers can celebrate the gradual shifts that standardized metrics often miss.</p>
+              <div className="gallery-caption"><span className="caption-line" /> Handcrafted classroom observations</div>
+            </div>
+            <div className="artwork-grid">
+              {gallery.map(({ title, illustration: Illustration, className }) => (
+                <figure className={`artwork-sheet ${className}`} key={title}>
+                  <span className="sheet-tape" />
+                  <Illustration />
+                  <figcaption>{title}</figcaption>
+                </figure>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="how-section section-pad" id="how-it-works" aria-labelledby="how-title">
+          <div className="site-container">
+            <div className="section-intro centered-intro how-intro">
+              <p className="section-kicker">Simple by design</p>
+              <h2 id="how-title">Three calm steps <em>each day.</em></h2>
+              <p>Designed around the rhythm of a preschool morning, without extra screens or administrative weight.</p>
+            </div>
+            <div className="steps-track">
+              <span className="track-line" />
+              <div className="step-card">
+                <span className="step-number">1</span>
+                <div className="step-illustration"><Eye size={42} strokeWidth={1.5} className="text-[#193e35]" /></div>
+                <h3>Observe</h3>
+                <p>Take one tap attendance and jot down real moments as children play and explore.</p>
+              </div>
+              <div className="step-card">
+                <span className="step-number">2</span>
+                <div className="step-illustration"><Heart size={42} strokeWidth={1.5} className="text-[#d9826b]" /></div>
+                <h3>Understand</h3>
+                <p>See who is flourishing and who could use gentle support in specific learning domains.</p>
+              </div>
+              <div className="step-card">
+                <span className="step-number">3</span>
+                <div className="step-illustration"><Sparkles size={42} strokeWidth={1.5} className="text-[#3e8178]" /></div>
+                <h3>Encourage</h3>
+                <p>Pick guided activities backed by pedagogical recommendations tailored for each child.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="cta-section">
+          <div className="site-container">
+            <div className="cta-panel">
+              <div className="cta-illustration"><GardenDoodle /></div>
+              <div className="cta-copy">
+                <p className="section-kicker" style={{ color: "#efc96e" }}>Welcome to VikasSetu</p>
+                <h2>Small steps today. <em>Big dreams tomorrow.</em></h2>
+                <p>Join preschool and Anganwadi teachers using VikasSetu – Aamchi Shala to nurture every child’s potential.</p>
+                <div className="cta-actions">
+                  <Link to="/dashboard" className="button button-primary">
+                    Open Teacher Dashboard <ArrowRight size={16} />
+                  </Link>
+                  <Link to="/recommendations" className="button button-quiet">
+                    View AI Recommendations <ChevronRight size={16} />
+                  </Link>
                 </div>
               </div>
-            );
-          })}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="site-footer">
+        <div className="site-container">
+          <div className="footer-grid">
+            <div>
+              <div className="brand brand-footer">
+                <span className="brand-mark"><LeafMark /></span>
+                <span className="brand-copy">
+                  <strong>VikasSetu</strong>
+                  <span>Aamchi Shala</span>
+                </span>
+              </div>
+              <p className="footer-copy">
+                A warm, observation-led preschool companion helping teachers notice the small milestones that build lifelong confidence.
+              </p>
+            </div>
+            <div>
+              <p className="footer-heading">Teacher Tools</p>
+              <div className="footer-links">
+                <Link to="/dashboard">Dashboard</Link>
+                <Link to="/children">Children Profiles</Link>
+                <Link to="/attendance">Attendance</Link>
+                <Link to="/progress">Observation Management</Link>
+                <Link to="/recommendations">Recommendations</Link>
+              </div>
+            </div>
+            <div>
+              <p className="footer-heading">Learning Areas</p>
+              <div className="footer-links">
+                <Link to="/activities">Alphabet & Language</Link>
+                <Link to="/activities">Numbers & Counting</Link>
+                <Link to="/activities">Colours & Shapes</Link>
+                <Link to="/activities">Art & Creativity</Link>
+                <Link to="/activities">Stories & Games</Link>
+              </div>
+            </div>
+          </div>
+          <div className="footer-bottom">
+            <span>VikasSetu — Aamchi Shala</span>
+            <span>Built with care for teachers and young learners</span>
+          </div>
         </div>
-        <div className="mt-6 flex flex-wrap gap-4 text-sm font-semibold text-muted-foreground">
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-coral" /> Needs Support
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-sun" /> Developing
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-primary" /> Good
-          </span>
-        </div>
-      </section>
-      <span className={toneBg.primary + " hidden"} />
+      </footer>
     </div>
   );
 }

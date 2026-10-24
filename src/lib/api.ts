@@ -38,6 +38,17 @@ async function handleResponse<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export async function apiRequest<T = void>(endpoint: string, options?: RequestInit): Promise<T> {
+  const url = endpoint.startsWith("http")
+    ? endpoint
+    : `${API_BASE_URL}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
+  const res = await fetch(url, {
+    headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
+    ...options,
+  });
+  return handleResponse<T>(res);
+}
+
 export async function fetchChildren(): Promise<Child[]> {
   try {
     const res = await fetch(`${API_BASE_URL}/children`);
