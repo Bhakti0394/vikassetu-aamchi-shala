@@ -12,7 +12,9 @@ import {
   RefreshCw,
   Filter,
   ArrowRight,
+  Users,
 } from "lucide-react";
+import { AreaIcon, ActivityIcon, RatingIcon } from "@/lib/icons";
 import { useStore } from "@/lib/store";
 import {
   ACTIVITIES,
@@ -68,8 +70,6 @@ export const Route = createFileRoute("/progress")({
   }),
   component: ProgressPage,
 });
-
-const SCORE_EMOJI: Record<Score, string> = { 1: "🌱", 2: "🌿", 3: "🌳" };
 
 const RATING_HINTS: Record<Score, string> = {
   1: "Needs guidance & practice",
@@ -530,9 +530,13 @@ function ProgressPage() {
         )}
       >
         <div className="flex items-center gap-3 min-w-0">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[#F4EFE3] border border-[#E2D9C8] text-xl">
-            {a.emoji}
-          </span>
+          <ActivityIcon
+            activity={a}
+            tile
+            tint={isSelected ? "sage" : "cream"}
+            size={20}
+            tileClassName="h-10 w-10 rounded-[10px] border border-[#E2D9C8]"
+          />
           <div className="min-w-0 flex-1">
             <span className="block text-[16px] font-semibold text-[#26332D] truncate leading-snug">
               {a.name}
@@ -836,8 +840,9 @@ function ProgressPage() {
             isExpanded={isStepExpanded(3, !!domain, !!errors.domain)}
             summaryText={
               domain ? (
-                <span className="font-bold text-[#26332D]">
-                  {domainOf(domain)?.emoji} {domainOf(domain)?.name}
+                <span className="font-bold text-[#26332D] inline-flex items-center gap-1.5">
+                  <AreaIcon domain={domain} size={16} />
+                  <span>{domainOf(domain)?.name}</span>
                 </span>
               ) : undefined
             }
@@ -856,9 +861,13 @@ function ProgressPage() {
                     : "bg-[#F4EFE3] border border-[#E2D9C8] hover:bg-[#EAE4D7]"
                 )}
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FFFDF8] border border-[#E2D9C8] text-base">
-                  ✨
-                </span>
+                <AreaIcon
+                  domain="all"
+                  tile
+                  tint={activityDomainFilter === "all" && !domain ? "sage" : "cream"}
+                  size={18}
+                  tileClassName="h-9 w-9 rounded-full border border-[#E2D9C8]"
+                />
                 <div className="flex-1 min-w-0">
                   <span className="font-semibold text-[16px] text-[#26332D] block truncate">
                     All Learning Areas
@@ -895,9 +904,13 @@ function ProgressPage() {
                         : "bg-[#F4EFE3] border border-[#E2D9C8] hover:bg-[#EAE4D7]"
                     )}
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FFFDF8] border border-[#E2D9C8] text-base">
-                      {d.emoji}
-                    </span>
+                    <AreaIcon
+                      domain={d.id}
+                      tile
+                      tint={isSelected ? "sage" : "cream"}
+                      size={18}
+                      tileClassName="h-9 w-9 rounded-full border border-[#E2D9C8]"
+                    />
                     <div className="flex-1 min-w-0">
                       <span className="font-semibold text-[16px] text-[#26332D] block truncate">
                         {d.name}
@@ -930,8 +943,9 @@ function ProgressPage() {
             isExpanded={isStepExpanded(4, !!activityId, !!errors.activity)}
             summaryText={
               selectedActivity ? (
-                <span className="font-bold text-[#26332D]">
-                  {selectedActivity.emoji} {selectedActivity.name} ({selectedActivity.minutes}m)
+                <span className="font-bold text-[#26332D] inline-flex items-center gap-1.5">
+                  <ActivityIcon activity={selectedActivity} size={16} />
+                  <span>{selectedActivity.name} ({selectedActivity.minutes}m)</span>
                 </span>
               ) : undefined
             }
@@ -945,7 +959,7 @@ function ProgressPage() {
                   return (
                     <div key={d.id} className="space-y-2.5">
                       <div className="flex items-center gap-2 text-[14px] font-semibold text-[#5F6B62]">
-                        <span>{d.emoji}</span>
+                        <AreaIcon domain={d.id} size={16} />
                         <span>{d.name}</span>
                         <span className="text-xs text-[#5F6B62]/80 font-normal">({domainActs.length})</span>
                       </div>
@@ -987,8 +1001,9 @@ function ProgressPage() {
             isExpanded={isStepExpanded(5, !!score, !!errors.score)}
             summaryText={
               score ? (
-                <span className="font-bold text-[#193F32]">
-                  {SCORE_EMOJI[score]} Level {score} — {SCORE_LABEL[score]}
+                <span className="font-bold text-[#193F32] inline-flex items-center gap-1.5">
+                  <RatingIcon score={score} size={16} />
+                  <span>Level {score} — {SCORE_LABEL[score]}</span>
                 </span>
               ) : undefined
             }
@@ -1007,7 +1022,7 @@ function ProgressPage() {
                       if (editingStep === 5) setEditingStep(null);
                     }}
                     className={cn(
-                      "relative flex flex-col items-center justify-center rounded-[14px] p-4 text-center transition-colors duration-150 cursor-pointer min-h-[88px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#193F32]",
+                      "relative flex flex-col items-center justify-center rounded-[14px] p-4 text-center transition-colors duration-150 cursor-pointer min-h-[96px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#193F32]",
                       isSelected
                         ? "bg-[#DCE9DD] border-2 border-[#193F32] shadow-[0_1px_2px_rgba(25,63,50,0.06)]"
                         : "bg-[#FFFDF8] border border-[#E2D9C8] hover:bg-[#F4EFE3] hover:border-[#D8CEBD]"
@@ -1018,7 +1033,9 @@ function ProgressPage() {
                         <Check className="h-3 w-3 stroke-[2.5]" />
                       </span>
                     )}
-                    <div className="text-3xl mb-1">{SCORE_EMOJI[s]}</div>
+                    <div className="mb-2 flex items-center justify-center text-[#193F32]">
+                      <RatingIcon score={s} size={28} />
+                    </div>
                     <div className="font-display text-xl font-bold text-[#26332D]">
                       {s} · {SCORE_LABEL[s]}
                     </div>
@@ -1167,7 +1184,7 @@ function ProgressPage() {
               <option value="all">All Learning Areas</option>
               {DOMAINS.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.emoji} {d.name}
+                  {d.name}
                 </option>
               ))}
             </select>
@@ -1217,8 +1234,8 @@ function ProgressPage() {
                         <ChildAvatar child={c} size="card" />
                       </Link>
                     ) : (
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F4EFE3] text-lg">
-                        🧒🏽
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F4EFE3] text-[#193F32]">
+                        <Users className="h-5 w-5" />
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
@@ -1234,8 +1251,9 @@ function ProgressPage() {
                         ) : (
                           <span className="font-bold text-[#5F6B62]">{o.childId}</span>
                         )}
-                        <span className="rounded-[8px] border border-[#E2D9C8] bg-[#F4EFE3] px-2 py-0.5 text-xs font-semibold text-[#193F32]">
-                          {domainOf(o.domain)?.emoji} {domainOf(o.domain)?.short}
+                        <span className="rounded-[8px] border border-[#E2D9C8] bg-[#F4EFE3] px-2 py-0.5 text-xs font-semibold text-[#193F32] inline-flex items-center gap-1">
+                          <AreaIcon domain={o.domain} size={12} />
+                          <span>{domainOf(o.domain)?.short}</span>
                         </span>
                         <span className="text-xs text-[#5F6B62]">
                           {formatDate(o.date)}
@@ -1258,8 +1276,9 @@ function ProgressPage() {
                   </div>
 
                   <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                    <span className="rounded-[8px] bg-[#DCE9DD] text-[#193F32] font-bold text-xs px-2.5 py-1">
-                      {SCORE_EMOJI[o.score]} Level {o.score}
+                    <span className="rounded-[8px] bg-[#DCE9DD] text-[#193F32] font-bold text-xs px-2.5 py-1 inline-flex items-center gap-1.5">
+                      <RatingIcon score={o.score} size={13} />
+                      <span>Level {o.score}</span>
                     </span>
                     <button
                       type="button"
@@ -1332,7 +1351,7 @@ function ProgressPage() {
               >
                 {DOMAINS.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.emoji} {d.name}
+                    {d.name}
                   </option>
                 ))}
               </select>
@@ -1359,10 +1378,10 @@ function ProgressPage() {
                   const acts = activitiesList.filter((a) => a.domain === d.id);
                   if (acts.length === 0) return null;
                   return (
-                    <optgroup key={d.id} label={`${d.emoji} ${d.name} (${acts.length})`}>
+                    <optgroup key={d.id} label={`${d.name} (${acts.length})`}>
                       {acts.map((a) => (
                         <option key={a.id} value={a.id}>
-                          {a.emoji} {a.name} ({a.difficulty} · {a.minutes}m)
+                          {a.name} ({a.difficulty} · {a.minutes}m)
                         </option>
                       ))}
                     </optgroup>
@@ -1389,7 +1408,10 @@ function ProgressPage() {
                         : "bg-[#FFFDF8] border-[#E2D9C8] hover:bg-[#F4EFE3] text-[#26332D]"
                     )}
                   >
-                    <div>{SCORE_EMOJI[s]} {s}</div>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <RatingIcon score={s} size={16} />
+                      <span>{s}</span>
+                    </div>
                     <div className="text-xs font-semibold">{SCORE_LABEL[s]}</div>
                   </button>
                 ))}
@@ -1656,7 +1678,7 @@ function ObservationSummaryCard({
           <span className="text-[12px] font-bold text-[#5F6B62] uppercase tracking-wide">Area</span>
           {domain ? (
             <div className="flex items-center gap-1.5 font-medium text-[#26332D] text-[13px] truncate">
-              <span>{domainOf(domain)?.emoji}</span>
+              <AreaIcon domain={domain} size={15} />
               <span className="truncate">{domainOf(domain)?.name}</span>
             </div>
           ) : (
@@ -1669,7 +1691,7 @@ function ObservationSummaryCard({
           <span className="text-[12px] font-bold text-[#5F6B62] uppercase tracking-wide">Activity</span>
           {activity ? (
             <div className="flex items-center gap-1.5 font-medium text-[#26332D] text-[13px] truncate">
-              <span>{activity.emoji}</span>
+              <ActivityIcon activity={activity} size={15} />
               <span className="truncate">{activity.name}</span>
             </div>
           ) : (
@@ -1682,7 +1704,7 @@ function ObservationSummaryCard({
           <span className="text-[12px] font-bold text-[#5F6B62] uppercase tracking-wide">Rating</span>
           {score ? (
             <div className="flex items-center gap-1.5 font-bold text-[#193F32] text-[13px]">
-              <span>{SCORE_EMOJI[score]}</span>
+              <RatingIcon score={score} size={15} />
               <span>Level {score} — {SCORE_LABEL[score]}</span>
             </div>
           ) : (

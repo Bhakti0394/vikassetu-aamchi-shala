@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { CalendarCheck, Home, Lightbulb, PenLine, Shapes, Users } from "lucide-react";
+import { LeafMark } from "@/components/illustrations";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -163,16 +164,19 @@ function RootComponent() {
             <Link
               to="/"
               title="Return to Landing Page"
-              className="flex min-h-16 items-center gap-3 px-4 py-3 sm:px-5 lg:py-7 hover:opacity-90 transition-opacity"
+              aria-label="VikasSetu – Aamchi Shala home"
+              className="flex min-h-16 items-center gap-2.5 px-4 py-3 sm:px-5 lg:py-7 hover:opacity-90 transition-opacity"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[var(--brand)] text-xl text-[#FAF7EF] shadow-xs">
-                🌱
-              </div>
-              <div className="min-w-0">
-                <p className="truncate font-display text-xl font-bold leading-none text-[var(--text)]">
+              <span className="grid place-items-center w-[34px] h-[34px] shrink-0" aria-hidden="true">
+                <LeafMark className="w-[34px] h-[34px]" />
+              </span>
+              <div className="grid gap-[1px] leading-none">
+                <strong className="font-serif text-[20px] tracking-[-0.03em] font-bold text-[#193F32]">
                   VikasSetu
-                </p>
-                <p className="text-xs text-[var(--text-muted)]">Aamchi Shala</p>
+                </strong>
+                <span className="text-[10px] font-bold tracking-[0.16em] uppercase text-[#193F32]/75">
+                  Aamchi Shala
+                </span>
               </div>
             </Link>
             <nav
@@ -185,7 +189,7 @@ function RootComponent() {
                   <Link
                     key={to}
                     to={to}
-                    activeOptions={{ exact: to === "/" }}
+                    activeOptions={{ exact: false }}
                     aria-current={active ? "page" : undefined}
                     className={cn(
                       "flex min-h-[42px] shrink-0 items-center gap-2.5 whitespace-nowrap rounded-[10px] px-3.5 py-2 text-sm font-bold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)] lg:text-base",

@@ -17,9 +17,19 @@ from app.ai_recommendations import (
     RecommendationPedagogy,
 )
 
+import hashlib
+import time
+
 logger = logging.getLogger("vikassetu.recommendations")
 
 router = APIRouter(prefix="/api/recommendations", tags=["Recommendations"])
+
+_RECOMMENDATION_CACHE = {}
+_CACHE_TTL_SECONDS = 300  # 5 minutes TTL
+
+def clear_recommendation_cache():
+    """Utility to flush recommendation cache during tests or state resets."""
+    _RECOMMENDATION_CACHE.clear()
 
 class ClientChildData(BaseModel):
     id: str
@@ -326,6 +336,18 @@ async def get_personalized_recommendations(
             fallback_reason="No observations recorded yet. First observations pending.",
         )
 
+    # Check cache for previously computed fresh recommendation
+    obs_sig = "|".join(f"{o.get('domain')}:{o.get('score')}:{o.get('note')}" for o in merged_observations[:10])
+    logs_sig = "|".join(f"{l.get('activity_id')}:{l.get('outcome')}:{l.get('note')}" for l in logs_data[:10])
+    raw_hash = hashlib.md5(f"{obs_sig}_{logs_sig}".encode()).hexdigest()
+    cache_key = f"{child.id}:{payload.limit_domains}:{raw_hash}"
+
+    now = time.time()
+    if cache_key in _RECOMMENDATION_CACHE:
+        cached_time, cached_res = _RECOMMENDATION_CACHE[cache_key]
+        if (now - cached_time) < _CACHE_TTL_SECONDS and not cached_res.fallback:
+            return cached_res
+
     # Find latest score and evidence per domain
     domain_order = ["alphabet", "numbers", "colours", "art", "stories"]
     latest_scores = {}
@@ -525,7 +547,7 @@ async def get_personalized_recommendations(
             chosen_activity_ids.add(rec_item.activity_id)
             recommendations.append(rec_item)
 
-    return ChildRecommendationResult(
+    result = ChildRecommendationResult(
         child_id=child.id,
         recommendations=recommendations,
         generated_at=datetime.now(timezone.utc).isoformat(),
@@ -533,3 +555,8 @@ async def get_personalized_recommendations(
         fallback=is_any_fallback,
         fallback_reason="Used deterministic fallback" if is_any_fallback else None,
     )
+
+    if not is_any_fallback and recommendations:
+        _RECOMMENDATION_CACHE[cache_key] = (time.time(), result)
+
+    return result
