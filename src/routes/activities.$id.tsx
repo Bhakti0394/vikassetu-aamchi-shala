@@ -13,6 +13,7 @@ import { activityOf, domainOf, toneBg } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { Avatar, SyncStatusBadge } from "@/components/ui-kit";
 import { ActivityIcon } from "@/lib/icons";
+import { useI18n, getDomainTitle, translateActivityName } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   saveActivityLog,
@@ -44,7 +45,7 @@ export const Route = createFileRoute("/activities/$id")({
   component: ActivityRun,
 });
 
-function formatOutcomeLabel(outcome: ActivityLogOutcome): string {
+function formatOutcomeLabel(outcome: ActivityLogOutcome, lang?: string): string {
   switch (outcome) {
     case "tried_helped":
       return "Tried — Helped";
@@ -56,6 +57,7 @@ function formatOutcomeLabel(outcome: ActivityLogOutcome): string {
 }
 
 function ActivityRun() {
+  const { lang, t } = useI18n();
   const { id } = Route.useParams();
   const { child: initialChildId } = Route.useSearch();
   const { children } = useStore();
@@ -213,7 +215,7 @@ function ActivityRun() {
         to="/activities"
         className="inline-flex items-center gap-1 font-bold text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" /> Activities
+        <ArrowLeft className="h-4 w-4" /> {t("act.title", "Activities")}
       </Link>
 
       {/* Header section with Activity Details */}
@@ -224,16 +226,16 @@ function ActivityRun() {
         <p className="mt-1 text-sm font-bold uppercase tracking-wide text-[#5F6B62]">
           {d?.name ?? a.domain}
         </p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold text-[#193F32]">{a.name}</h1>
+        <h1 className="font-display text-3xl sm:text-4xl font-bold text-[#193F32]">{translateActivityName(a.name, lang)}</h1>
         <p className="mt-2 flex items-center justify-center gap-1 font-semibold text-[#5F6B62]">
-          <Clock className="h-4 w-4" /> {a.minutes} min · {a.difficulty}
+          <Clock className="h-4 w-4" /> {a.minutes} {t("rec.mins", "min")} · {a.difficulty}
         </p>
 
         {/* Child Selector */}
         <div className="mx-auto mt-5 flex max-w-sm flex-wrap items-center justify-center gap-2 rounded-2xl bg-card/90 p-2 shadow-soft">
           <label htmlFor="child-activity-select" className="flex items-center gap-2 px-2 cursor-pointer">
             {selectedChild ? <Avatar child={selectedChild} size="sm" /> : <User className="h-5 w-5" />}
-            <span className="text-xs font-bold text-muted-foreground">Child:</span>
+            <span className="text-xs font-bold text-muted-foreground">{t("run.child", "Child:")}</span>
           </label>
           <select
             id="child-activity-select"
@@ -247,7 +249,7 @@ function ActivityRun() {
           >
             {children.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name} ({c.age} yrs)
+                {c.name} ({c.age} {t("rec.yrs", "yrs")})
               </option>
             ))}
           </select>
@@ -257,9 +259,9 @@ function ActivityRun() {
       {/* Step by Step Checklist */}
       <section className="card-soft p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold">Steps — tap each when done</h2>
+          <h2 className="text-xl font-bold">{t("run.steps_title", "Steps — tap each when done")}</h2>
           <span className="rounded-full bg-primary-soft px-3 py-1 text-xs font-bold text-primary">
-            {completedSteps} / {totalSteps} completed
+            {completedSteps} / {totalSteps} {t("run.completed", "completed")}
           </span>
         </div>
 
@@ -298,7 +300,7 @@ function ActivityRun() {
         </ol>
 
         <div className="mt-4 flex flex-wrap gap-1.5">
-          <span className="text-sm font-bold text-muted-foreground">Skills:</span>
+          <span className="text-sm font-bold text-muted-foreground">{t("run.skills", "Skills:")}</span>
           {a.skills.map((s) => (
             <span key={s} className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-bold">
               {s}
@@ -324,7 +326,7 @@ function ActivityRun() {
             aria-label="Record outcome: Tried, Helped"
             className="min-h-[48px] rounded-xl border border-teal/40 bg-teal-soft px-3 py-2 text-center text-sm font-bold text-teal transition hover:opacity-90 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
-            Tried — Helped
+            {t("run.tried_helped", "Tried — Helped")}
           </button>
 
           <button
@@ -334,7 +336,7 @@ function ActivityRun() {
             aria-label="Record outcome: Tried, Needs Support"
             className="min-h-[48px] rounded-xl border border-sun/40 bg-sun-soft px-3 py-2 text-center text-sm font-bold text-foreground transition hover:opacity-90 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
-            Tried — Needs Support
+            {t("run.tried_needs_support", "Tried — Needs Support")}
           </button>
 
           <button
@@ -344,7 +346,7 @@ function ActivityRun() {
             aria-label="Record outcome: Not Tried"
             className="min-h-[48px] rounded-xl border border-border bg-background/70 px-3 py-2 text-center text-sm font-bold text-muted-foreground transition hover:opacity-90 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
-            Not Tried
+            {t("run.not_tried", "Not Tried")}
           </button>
         </div>
 
@@ -449,7 +451,7 @@ function ActivityRun() {
                             : "bg-sun/40 text-foreground",
                         )}
                       >
-                        {formatOutcomeLabel(q.outcome)}
+                        {formatOutcomeLabel(q.outcome, lang)}
                       </span>
                       <span
                         className={cn(
@@ -523,7 +525,7 @@ function ActivityRun() {
                             : "bg-muted text-muted-foreground",
                       )}
                     >
-                      {formatOutcomeLabel(l.outcome)}
+                      {formatOutcomeLabel(l.outcome, lang)}
                     </span>
                     <span className="text-xs font-semibold text-muted-foreground">
                       ✓ Confirmed

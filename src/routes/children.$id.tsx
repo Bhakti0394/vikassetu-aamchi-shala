@@ -34,6 +34,8 @@ import {
 } from "@/lib/aiRecommendations";
 import { Avatar, DomainBars, DomainChip, ScoreBadge, StartButton, SyncStatusBadge } from "@/components/ui-kit";
 import { cn } from "@/lib/utils";
+import { PageLoader } from "@/components/PageLoader";
+import { useI18n, getDomainTitle, translateActivityName } from "@/lib/i18n";
 
 export const Route = createFileRoute("/children/$id")({
   head: () => ({
@@ -67,9 +69,13 @@ function formatOutcomeLabel(outcome: string): string {
 }
 
 function Profile() {
+  const { lang, t } = useI18n();
   const { id } = Route.useParams();
   const { children, observations, attendance } = useStore();
   const ch = children.find((c) => c.id === id) || SEED_CHILDREN.find((c) => c.id === id);
+  if (!ch) {
+    return <PageLoader fullScreen={false} message="Loading child profile…" />;
+  }
 
   const isMountedRef = useRef(true);
   useEffect(() => {
@@ -344,7 +350,7 @@ function Profile() {
         to="/children"
         className="inline-flex items-center gap-1 font-bold text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" /> All children
+        <ArrowLeft className="h-4 w-4" /> {t("profile.all_children", "All children")}
       </Link>
 
       <section
@@ -357,27 +363,27 @@ function Profile() {
         <div className="flex-1">
           <h1 className="text-4xl font-bold">{ch.name}</h1>
           <p className="mt-1 font-semibold text-muted-foreground">
-            {ch.age} years · {present ? "Present today" : "Absent today"} ·{" "}
-            {attendancePct(attendance, ch.id)}% attendance
+            {ch.age} {t("common.years", "years")} · {present ? t("profile.present_today", "Present today") : t("profile.absent_today", "Absent today")} ·{" "}
+            {attendancePct(attendance, ch.id)}% {t("profile.attendance", "attendance")}
           </p>
         </div>
         <Link to="/progress" search={{ child: ch.id }} className="btn btn-primary">
-          <PenLine className="h-4 w-4" /> Record Observation
+          <PenLine className="h-4 w-4" /> {t("profile.record_obs", "Record Observation")}
         </Link>
       </section>
 
       <div className="grid gap-6 lg:grid-cols-5">
         <section className="card-soft p-6 lg:col-span-3">
-          <h2 className="mb-1 text-2xl font-bold">Learning Overview</h2>
+          <h2 className="mb-1 text-2xl font-bold">{t("profile.learning_overview", "Learning Overview")}</h2>
           <p className="mb-6 text-sm text-muted-foreground">
-            1 = Needs Support · 2 = Developing · 3 = Good
+            {t("profile.levels_hint", "1 = Needs Support · 2 = Developing · 3 = Good")}
           </p>
           <DomainBars child={ch} />
         </section>
         <div className="space-y-6 lg:col-span-2">
           <section className="card-soft p-6">
             <h3 className="mb-3 flex items-center gap-2 text-xl font-bold">
-              <CheckCircle2 className="h-5 w-5 text-primary" /> What {ch.name} is doing well
+              <CheckCircle2 className="h-5 w-5 text-primary" /> {ch.name} {t("profile.doing_well", "is doing well")}
             </h3>
             <ul className="space-y-2">
               {(ch.strengths.length ? ch.strengths : ["Observations coming soon"]).map((s) => (
@@ -389,7 +395,7 @@ function Profile() {
           </section>
           <section className="card-soft p-6">
             <h3 className="mb-3 flex items-center gap-2 text-xl font-bold">
-              <HeartHandshake className="h-5 w-5 text-coral" /> Needs more support
+              <HeartHandshake className="h-5 w-5 text-coral" /> {t("profile.needs_support", "Needs more support")}
             </h3>
             <ul className="space-y-2">
               {ch.needs.map((s) => (
@@ -404,9 +410,9 @@ function Profile() {
 
       <section>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Recommended Activities</h2>
+          <h2 className="text-2xl font-bold">{t("profile.recs_heading", "Recommended Activities")}</h2>
           <span className="text-xs font-semibold text-muted-foreground">
-            Observation-driven teaching guidance
+            {t("profile.recs_subheading", "Observation-driven teaching guidance")}
           </span>
         </div>
 
@@ -430,7 +436,7 @@ function Profile() {
                 More observations are needed to suggest a personalized next activity. Record what {ch.name} can do independently and where they need support.
               </p>
               <Link to="/progress" search={{ child: ch.id }} className="btn btn-primary inline-flex">
-                <PenLine className="h-4 w-4" /> Record Observation
+                <PenLine className="h-4 w-4" /> {t("profile.record_obs", "Record Observation")}
               </Link>
             </div>
           )
@@ -480,20 +486,20 @@ function Profile() {
                           {activeActivity.emoji}
                         </div>
                         <div>
-                          <p className="font-display text-lg font-bold">{activeActivity.name}</p>
+                          <p className="font-display text-lg font-bold">{translateActivityName(activeActivity.name, lang)}</p>
                           <p className="text-xs text-muted-foreground">
-                            {activeActivity.minutes} min · {activeActivity.difficulty} · Level {card.level}/3
+                            {activeActivity.minutes} {t("rec.mins", "min")} · {activeActivity.difficulty} · {t("focus.level", "Level")} {card.level}/3
                           </p>
                         </div>
                       </div>
 
                       {aiItem?.isAiGenerated ? (
                         <span className="inline-flex items-center gap-1 rounded-xl border border-primary/30 bg-primary-soft px-2 py-0.5 text-xs font-bold text-primary shrink-0">
-                          <Sparkles className="h-3 w-3" /> AI Plan
+                          <Sparkles className="h-3 w-3" /> {t("profile.ai_plan", "AI Plan")}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 rounded-xl border border-teal/30 bg-teal-soft px-2 py-0.5 text-xs font-bold text-teal shrink-0">
-                          <Zap className="h-3 w-3" /> Pedagogical
+                          <Zap className="h-3 w-3" /> {t("profile.pedagogical", "Pedagogical")}
                         </span>
                       )}
                     </div>
@@ -507,7 +513,7 @@ function Profile() {
                     {aiItem?.teachingStrategy && (
                       <div className="mt-2.5 rounded-xl bg-background/80 p-2.5 text-xs border border-border/60">
                         <p className="font-bold text-primary flex items-center gap-1 text-[11px] uppercase tracking-wide">
-                          <Lightbulb className="h-3.5 w-3.5" /> Strategy:
+                          <Lightbulb className="h-3.5 w-3.5" /> {t("profile.strategy", "Strategy:")}
                         </p>
                         <p className="mt-1 text-foreground leading-relaxed">
                           {aiItem.teachingStrategy}
@@ -518,7 +524,7 @@ function Profile() {
                     {/* Step by step teacher instructions */}
                     <div className="mt-2.5 space-y-1.5 text-xs">
                       <p className="font-bold text-muted-foreground text-[11px] uppercase tracking-wide">
-                        Teacher Steps:
+                        {t("profile.teacher_steps", "Teacher Steps:")}
                       </p>
                       <ol className="space-y-1 text-foreground">
                         {(aiItem?.teacherSteps?.length ? aiItem.teacherSteps : activeActivity.steps).map(
@@ -538,7 +544,7 @@ function Profile() {
                     {aiItem?.successCriteria && (
                       <div className="mt-2.5 rounded-xl bg-teal-soft/40 p-2 text-xs border border-teal/20">
                         <p className="font-bold text-teal flex items-center gap-1 text-[11px]">
-                          <CheckCircle2 className="h-3 w-3" /> Observable Success Measure:
+                          <CheckCircle2 className="h-3 w-3" /> {t("profile.success_measure", "Observable Success Measure:")}
                         </p>
                         <p className="mt-0.5 text-foreground leading-snug">
                           {aiItem.successCriteria}
@@ -550,7 +556,7 @@ function Profile() {
                     {(card.scaffoldingNote || aiItem?.nextStepIfSupportNeeded) && (
                       <div className="mt-2.5 rounded-xl bg-amber-soft/40 p-2 text-xs border border-amber/30 text-amber-900 dark:text-amber-100">
                         <p className="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1 text-[11px] uppercase tracking-wide">
-                          <Compass className="h-3.5 w-3.5" /> Scaffolding Adaptation:
+                          <Compass className="h-3.5 w-3.5" /> {t("profile.scaffolding", "Scaffolding Adaptation:")}
                         </p>
                         <p className="mt-0.5 leading-snug">
                           {card.scaffoldingNote || aiItem?.nextStepIfSupportNeeded}
@@ -574,7 +580,7 @@ function Profile() {
       <section className="card-soft p-6">
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-bold">Activity trials & progress</h2>
+            <h2 className="text-2xl font-bold">{t("profile.trials_heading", "Activity trials & progress")}</h2>
             <p className="text-sm text-muted-foreground">
               Step achievements and trial outcomes from recent activities with {ch.name}.
             </p>
@@ -623,16 +629,16 @@ function Profile() {
             <div className="rounded-2xl border border-border/80 bg-background/70 p-4 shadow-xs">
               <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-bold text-foreground">Practice Summary:</span>
+                  <span className="font-bold text-foreground">{t("profile.practice_summary", "Practice Summary:")}</span>
                   <span className="rounded-lg bg-muted px-2 py-0.5 font-bold text-muted-foreground">
                     {practiceSummary.totalTrials} {practiceSummary.totalTrials === 1 ? "trial" : "trials"}
                   </span>
                   <span className="rounded-lg bg-teal-soft px-2 py-0.5 font-bold text-teal">
-                    ✓ {practiceSummary.helpedCount} Helped
+                    ✓ {practiceSummary.helpedCount} {t("profile.helped", "Helped")}
                   </span>
                   {practiceSummary.needsSupportCount > 0 && (
                     <span className="rounded-lg bg-amber-soft px-2 py-0.5 font-bold text-amber-700 dark:text-amber-400">
-                      ⚠ {practiceSummary.needsSupportCount} Needed Support
+                      ⚠ {practiceSummary.needsSupportCount} {t("profile.needed_support", "Needed Support")}
                     </span>
                   )}
                 </div>
@@ -708,7 +714,7 @@ function Profile() {
                       <div className="flex flex-wrap items-center gap-2">
                         {domain && <DomainChip id={domain.id} />}
                         <span className="font-bold text-foreground">
-                          {act?.name || itemData.activityId}
+                          {act ? translateActivityName(act.name, lang) : itemData.activityId}
                         </span>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -722,10 +728,10 @@ function Profile() {
                                 : "bg-muted text-muted-foreground",
                           )}
                         >
-                          {formatOutcomeLabel(itemData.outcome)}
+                          {formatOutcomeLabel(itemData.outcome, lang)}
                         </span>
                         <span className="text-xs font-semibold text-muted-foreground">
-                          {itemData.completedSteps} of {itemData.totalSteps} steps completed
+                          {itemData.completedSteps} / {itemData.totalSteps} {t("profile.steps_completed", "steps completed")}
                         </span>
                         {isQueued && (
                           <span
@@ -736,7 +742,7 @@ function Profile() {
                                 : "bg-sun-soft text-sun-foreground",
                             )}
                           >
-                            {item.queued.status === "sync_failed" ? "⚠️ Sync failed" : "⏳ Saved offline"}
+                            {item.queued.status === "sync_failed" ? `⚠️ ${t("profile.sync_failed", "Sync failed")}` : `⏳ ${t("profile.saved_offline", "Saved offline")}`}
                           </span>
                         )}
                         {isQueued && item.queued.retryCount ? (

@@ -55,6 +55,7 @@ import {
   type PersonalizedPedagogy,
 } from "@/lib/aiRecommendations";
 import { ChildAvatar } from "@/components/ChildAvatar";
+import { useI18n, getDomainTitle, translateActivityName } from "@/lib/i18n";
 
 type SearchParams = {
   child?: string | undefined;
@@ -188,6 +189,7 @@ function RecommendationsPage() {
   const { children, observations } = useStore();
   const search = Route.useSearch();
   const navigate = useNavigate();
+  const { t, lang } = useI18n();
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -551,11 +553,11 @@ function RecommendationsPage() {
         <div className="flex flex-col justify-between gap-2.5 sm:flex-row sm:items-baseline">
           <div className="space-y-1">
             <h1 className="font-display text-[28px] sm:text-[32px] font-bold tracking-tight text-[var(--text)] leading-tight">
-              Recommended for Each Child
+              {t("rec.title", "Recommended for Each Child")}
             </h1>
             <p className="text-[14px] text-[var(--text-muted)] leading-relaxed">
-              Discover activities based on what each child enjoys, explores, and is ready to
-              practise.
+              {t("rec.subtitle", "Discover activities based on what each child enjoys, explores, and is ready to practise.")}
+
             </p>
           </div>
 
@@ -571,7 +573,7 @@ function RecommendationsPage() {
                 ) : (
                   <>
                     <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-[var(--brand)]" />
-                    <span>Curriculum Guidance</span>
+                    <span>{t("rec.curriculum_guidance", "Curriculum Guidance")}</span>
                   </>
                 )}
               </PedagogicalInfoTip>
@@ -581,7 +583,7 @@ function RecommendationsPage() {
             {pendingTrialsCount > 0 && (
               <span className="inline-flex items-center gap-1.5 rounded-[10px] border border-[var(--border)] bg-[var(--bg-section)] px-2.5 py-1 text-[12px] font-semibold text-[var(--text)]">
                 <Clock className="h-3.5 w-3.5 text-[var(--text-muted)]" />
-                <span>{pendingTrialsCount} queued</span>
+                <span>{pendingTrialsCount} {t("rec.queued", "queued")}</span>
               </span>
             )}
           </div>
@@ -593,10 +595,10 @@ function RecommendationsPage() {
          ========================================================================= */}
       <section aria-label="Child selector" className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-[14px] font-bold text-[var(--text)]">Children</h2>
+          <h2 className="text-[14px] font-bold text-[var(--text)]">{t("rec.children", "Children")}</h2>
           <div className="flex items-center gap-3">
             <span className="text-[12px] text-[var(--text-muted)] font-medium">
-              {activePlansCount} active plans
+              {activePlansCount} {t("rec.active_plans", "active plans")}
             </span>
             {allChildren.length > COLLAPSED_SELECTOR_LIMIT && (
               <button
@@ -633,7 +635,7 @@ function RecommendationsPage() {
           >
             <div className="flex items-center gap-1.5 truncate">
               <Users className="h-4 w-4 shrink-0" />
-              <span className="truncate">All Children</span>
+              <span className="truncate">{t("rec.all_children", "All Children")}</span>
             </div>
             {/* Shows total children count */}
             <span
@@ -677,7 +679,7 @@ function RecommendationsPage() {
                         isSelected ? "text-white/80" : "text-[var(--text-muted)]",
                       )}
                     >
-                      {ch.age} yrs
+                      {ch.age} {t("rec.yrs", "yrs")}
                     </span>
                   </div>
                 </div>
@@ -743,10 +745,10 @@ function RecommendationsPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h2 className="font-display text-[20px] font-bold text-[var(--text)]">
-                    Classroom Activity Overview
+                    {t("rec.overview", "Classroom Activity Overview")}
                   </h2>
                   <span className="text-[13px] font-semibold text-[var(--text-muted)]">
-                    ({activePlansCount} recommended)
+                    ({activePlansCount} {t("rec.recommended_count", "recommended")})
                   </span>
                 </div>
               </div>
@@ -778,7 +780,7 @@ function RecommendationsPage() {
                                   {child.name}
                                 </button>
                                 <span className="text-[12px] text-[var(--text-muted)]">
-                                  {child.age} yrs
+                                  {child.age} {t("rec.yrs", "yrs")}
                                 </span>
                               </div>
                             </div>
@@ -793,11 +795,11 @@ function RecommendationsPage() {
                                   )}
                                   aria-hidden="true"
                                 />
-                                <span>{isPriority ? "Priority" : "Developing"}</span>
+                                <span>{isPriority ? t("rec.priority", "Priority") : t("rec.developing", "Developing")}</span>
                               </span>
                             ) : (
                               <span className="text-[12px] font-medium text-[var(--text-muted)] shrink-0">
-                                Mastered
+                                {t("rec.mastered", "Mastered")}
                               </span>
                             )}
                           </div>
@@ -807,24 +809,24 @@ function RecommendationsPage() {
                             <div className="space-y-1.5 pt-0.5">
                               <div className="flex items-center gap-1.5 text-[13px] font-medium text-[var(--text-muted)]">
                                 <DomainIcon className="h-4 w-4 shrink-0 text-[var(--brand)]" />
-                                <span>{domainInfo?.name ?? "Learning Activity"}</span>
+                                <span>{domainId ? getDomainTitle(domainId, lang) : (domainInfo?.name ?? "Learning Activity")}</span>
                               </div>
 
                               {/* 3. Activity title: The most prominent text in the card */}
                               <h3 className="font-display text-[17px] font-semibold text-[var(--text)] leading-snug line-clamp-1">
-                                {activeActivity.name}
+                                {translateActivityName(activeActivity.name, lang)}
                               </h3>
 
                               {/* 4. Meta row: duration and difficulty as plain inline text */}
                               <p className="text-[13px] text-[var(--text-muted)]">
-                                {activeActivity.minutes} mins · {activeActivity.difficulty}{" "}
+                                {activeActivity.minutes} {t("rec.mins", "mins")} · {activeActivity.difficulty}{" "}
                                 difficulty
                               </p>
 
                               {/* 5. Explanation preview: 14px, #4A564E, 2-line clamp, label above */}
                               <div className="space-y-0.5 pt-0.5">
                                 <p className="text-[11px] font-semibold text-[var(--text-muted)]">
-                                  Why this activity
+                                  {t("rec.why_this", "Why this activity")}
                                 </p>
                                 <p className="text-[14px] font-normal leading-relaxed text-[#4A564E] line-clamp-2">
                                   {cleanReason}
@@ -854,7 +856,7 @@ function RecommendationsPage() {
                                 onClick={() => handleSelectChild(child.id)}
                                 className="inline-flex min-h-[44px] items-center gap-1 rounded-[10px] pl-0 pr-3 py-2 text-[14px] font-semibold text-[var(--brand)] hover:underline focus-visible:outline-2 focus-visible:outline-[var(--brand)] focus-visible:outline-offset-2 transition-colors"
                               >
-                                <span>View Plan</span>
+                                <span>{t("rec.view_plan", "View Plan")}</span>
                                 <ChevronRight className="h-4 w-4" />
                               </button>
 
@@ -865,7 +867,7 @@ function RecommendationsPage() {
                                 search={{ child: child.id }}
                                 className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-[10px] bg-[var(--brand)] hover:bg-[#122F25] text-[#FAF7EF] px-4 py-2 text-[14px] font-bold shadow-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
                               >
-                                <span>Start</span>
+                                <span>{t("rec.start", "Start")}</span>
                                 <ArrowRight className="h-4 w-4" />
                               </Link>
                             </>
@@ -1109,7 +1111,7 @@ function RecommendationsPage() {
                       <div className="rounded-[12px] border border-[#E2D9C8] bg-[var(--bg-section)]/60 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div className="space-y-1.5">
                           <div className="flex items-center gap-2 text-[13px] text-[var(--text-muted)]">
-                            <span>{activeActivity.minutes} mins</span>
+                            <span>{activeActivity.minutes} {t("rec.mins", "mins")}</span>
                             <span>•</span>
                             <span className="capitalize">
                               {activeActivity.difficulty} difficulty

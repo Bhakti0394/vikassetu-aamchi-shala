@@ -10,6 +10,7 @@ import {
   type DomainId,
   type Score,
 } from "./data";
+import { PageLoader } from "@/components/PageLoader";
 
 type State = {
   children: Child[];
@@ -159,13 +160,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   return (
     <StoreCtx.Provider value={value}>
-      {loaded ? (
-        children
-      ) : (
-        <div className="flex min-h-[60vh] items-center justify-center">
-          <div className="float text-5xl">🌱</div>
-        </div>
-      )}
+      {children}
     </StoreCtx.Provider>
   );
 }

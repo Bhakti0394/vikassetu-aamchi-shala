@@ -35,6 +35,8 @@ import { AreaIcon, ActivityIcon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { apiRequest } from "@/lib/api";
+import { PageLoader } from "@/components/PageLoader";
+import { useI18n } from "@/lib/i18n";
 
 function CountUp({ value }: { value: number }) {
   const [n, setN] = useState(0);
@@ -87,6 +89,7 @@ interface DashboardSummaryData {
 }
 
 function Dashboard() {
+  const { t } = useI18n();
   const { children, observations, attendance, completed } = useStore();
   const [summary, setSummary] = useState<DashboardSummaryData | null>(null);
   const [heroImgFailed, setHeroImgFailed] = useState(false);
@@ -108,6 +111,10 @@ function Dashboard() {
   }, []);
 
   // Compute values: prioritize live backend summary, fallback to client store
+  if (children.length === 0 && !summary) {
+    return <PageLoader fullScreen={false} message="Loading classroom dashboard…" />;
+  }
+
   const storePresent = children.filter((c) => isPresentToday(attendance, c.id)).length;
   const storeAttention = children.filter(needsAttention);
   const storeFocus = [...children].sort((a, b) => avgLevel(a) - avgLevel(b)).slice(0, 3);
@@ -127,12 +134,12 @@ function Dashboard() {
   const absentChildren = children.filter((c) => attendance[c.id]?.[todayKey] === false || !isPresentToday(attendance, c.id));
 
   const hour = new Date().getHours();
-  const greet = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const greet = hour < 12 ? t("dash.good_morning", "Good morning") : hour < 17 ? t("dash.good_afternoon", "Good afternoon") : t("dash.good_evening", "Good evening");
 
   const stats = [
     {
       id: "total-children",
-      label: "Total enrolled",
+      label: t("metric.enrolled", "Total enrolled"),
       value: totalChildrenCount,
       scope: "Enrolled in class",
       icon: Users,
@@ -141,7 +148,7 @@ function Dashboard() {
     },
     {
       id: "present-today",
-      label: "Present today",
+      label: t("metric.present", "Present today"),
       value: presentCount,
       scope: `${presentCount} of ${totalChildrenCount || 0} children marked present`,
       icon: CalendarCheck,
@@ -150,7 +157,7 @@ function Dashboard() {
     },
     {
       id: "need-attention",
-      label: "Need attention",
+      label: t("metric.needs_attention", "Need attention"),
       value: needsAttentionCount,
       scope: "Children with low scores needing tailored support",
       icon: HeartHandshake,
@@ -159,7 +166,7 @@ function Dashboard() {
     },
     {
       id: "activities-done",
-      label: "Activities logged",
+      label: t("metric.activities_done", "Activities logged"),
       value: activitiesDoneCount,
       scope: "Guided activities and trials completed",
       icon: Trophy,
@@ -224,20 +231,20 @@ function Dashboard() {
           {/* Frosted greeting chip */}
           <div className="inline-flex items-center gap-2 rounded-full border border-[#FAF7EF]/25 bg-[#FAF7EF]/15 px-3.5 py-1 text-xs sm:text-sm font-bold text-[#FAF7EF] backdrop-blur-[6px] shadow-xs">
             <Sun className="h-4 w-4 text-[#FAF7EF] shrink-0" aria-hidden="true" />
-            <span>{greet}, Teacher</span>
+            <span>{greet}, {t("dash.teacher", "Teacher")}</span>
           </div>
 
           {/* Headline */}
           <h1 className="font-display font-extrabold tracking-tight text-[#FAF7EF] text-[clamp(2.1rem,4.5vw,3.25rem)] leading-[1.08]">
-            What should I do <span className="text-[#DF806B]">today?</span>
+            {t("dash.headline_prefix", "What should I do")} <span className="text-[#DF806B]">{t("dash.headline_highlight", "today?")}</span>
           </h1>
 
           {/* Subtext */}
           <p className="text-[#FAF7EF]/85 text-sm sm:text-base leading-relaxed max-w-[52ch]">
             {focusChildren.length > 0 ? (
               <>
-                <span className="font-bold text-[#FAF7EF]">{focusChildren.length} children</span> could
-                use a little extra support today. Start with them.
+                <span className="font-bold text-[#FAF7EF]">{focusChildren.length} {t("nav.children", "children")}</span>
+                {t("dash.support_notice", "could use a little extra support today. Start with them.")}
               </>
             ) : (
               "Every child learns differently. Observe and record today's class progress."
@@ -251,7 +258,7 @@ function Dashboard() {
               className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-[12px] bg-[#FAF7EF] text-[#193F32] font-bold text-sm sm:text-base transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(25,63,50,0.15)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FAF7EF]"
             >
               <PenLine className="h-4 w-4" aria-hidden="true" />
-              <span>Record Observation</span>
+              <span>{t("dash.record_obs", "Record Observation")}</span>
             </Link>
             <Link
               to="/children"
@@ -259,7 +266,7 @@ function Dashboard() {
               className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-[12px] border border-[#FAF7EF]/50 bg-transparent text-[#FAF7EF] font-bold text-sm sm:text-base transition-all duration-150 hover:bg-[#FAF7EF]/12 hover:border-[#FAF7EF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FAF7EF]"
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
-              <span>Add Child</span>
+              <span>{t("dash.add_child", "Add Child")}</span>
             </Link>
           </div>
         </div>
@@ -344,20 +351,20 @@ function Dashboard() {
                 id="todays-focus-heading"
                 className="font-display text-2xl sm:text-[26px] font-bold tracking-tight text-[#26332D]"
               >
-                Today's Focus
+                {t("focus.title", "Today's Focus")}
               </h2>
             </div>
             {/* Short coral underline accent (3px high, 32px wide) */}
             <div className="mt-1 h-[3px] w-8 rounded-full bg-[#DF806B]" aria-hidden="true" />
             <p className="mt-1.5 text-sm text-[#5F6B62]">
-              Children who may benefit from extra guidance today
+              {t("focus.subtitle", "Children who may benefit from extra guidance today")}
             </p>
           </div>
           <Link
             to="/recommendations"
             className="inline-flex items-center gap-1.5 text-sm font-bold text-[#193F32] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#193F32] rounded-[6px]"
           >
-            <span>All recommendations</span>
+            <span>{t("focus.all_recs", "All recommendations")}</span>
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </div>

@@ -16,6 +16,7 @@ import { ChildAvatar } from "@/components/ChildAvatar";
 import { AreaIcon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/children/")({
   validateSearch: (s: Record<string, unknown>): { add?: boolean } =>
@@ -38,6 +39,7 @@ export const Route = createFileRoute("/children/")({
 });
 
 export function ChildrenPage() {
+  const { t } = useI18n();
   const store = useStore();
   const { add } = Route.useSearch();
   const navigate = useNavigate();
@@ -247,13 +249,13 @@ export function ChildrenPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <p className="text-[12px] font-bold uppercase tracking-wider text-[#193F32]">
-              Our class
+              {t("children.our_class", "Our class")}
             </p>
             <h1 className="font-display text-[28px] sm:text-[32px] font-bold tracking-tight text-[#193F32] leading-tight">
-              Children
+              {t("children.title", "Children")}
             </h1>
             <p className="text-[14px] text-[#5F6B62] leading-relaxed max-w-[65ch]">
-              Every child's learning level, strengths and areas needing attention.
+              {t("children.subtitle", "Every child's learning level, strengths and areas needing attention.")}
             </p>
             {/* Quiet summary line computed from existing data */}
             <p className="text-[13px] font-semibold text-[#5F6B62] pt-0.5">
@@ -269,7 +271,7 @@ export function ChildrenPage() {
             className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-[#193F32] px-4 py-2.5 text-sm font-bold text-[#FAF7EF] hover:bg-[#193F32]/90 transition-colors shadow-[0_1px_2px_rgba(25,63,50,0.06)] min-h-[44px] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#193F32] self-start sm:self-auto shrink-0"
           >
             <Plus aria-hidden="true" className="h-4 w-4 stroke-[2.5]" />
-            <span>Add Child</span>
+            <span>{t("dash.add_child", "Add Child")}</span>
           </button>
         </div>
       </header>
@@ -286,7 +288,7 @@ export function ChildrenPage() {
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by name…"
+            placeholder={t("common.search", "Search by name…")}
             aria-label="Search children by name"
             className="h-[44px] w-full rounded-[10px] border border-[#E2D9C8] bg-[#FFFDF8] py-2 pl-10 pr-4 text-sm font-medium text-[#26332D] placeholder-[#5F6B62]/70 outline-none transition-colors focus:border-[#193F32] focus:ring-2 focus:ring-[#193F32]"
           />
@@ -390,11 +392,11 @@ export function ChildrenPage() {
           aria-hidden="true"
           className="hidden xl:grid grid-cols-[minmax(220px,2fr)_150px_1.2fr_1.2fr_120px_24px] items-center gap-4 px-4 pb-2.5 text-[12px] font-semibold text-[#5F6B62]"
         >
-          <div>Child</div>
-          <div>Level</div>
-          <div>Strongest</div>
-          <div>Needs attention</div>
-          <div>Attendance</div>
+          <div>{t("children.col_child", "Child")}</div>
+          <div>{t("children.col_level", "Level")}</div>
+          <div>{t("children.col_strongest", "Strongest")}</div>
+          <div>{t("children.col_needs", "Needs attention")}</div>
+          <div>{t("children.col_attendance", "Attendance")}</div>
           <div />
         </div>
 

@@ -41,6 +41,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { invalidateRecommendationCache } from "@/lib/aiRecommendations";
+import { useI18n, getDomainTitle, translateActivityName } from "@/lib/i18n";
 
 type SearchParams = {
   child?: string | undefined;
@@ -109,6 +110,7 @@ interface FormErrors {
 }
 
 function ProgressPage() {
+  const { lang, t } = useI18n();
   const search = Route.useSearch();
   const store = useStore();
 
@@ -680,10 +682,10 @@ function ProgressPage() {
           Observation Management
         </p>
         <h1 className="font-display text-[28px] sm:text-[32px] font-bold tracking-tight text-[#193F32] leading-tight">
-          Record an Observation
+          {t("prog.page_title", "Record an Observation")}
         </h1>
         <p className="text-[14px] text-[#5F6B62] leading-relaxed max-w-[60ch]">
-          Capture learning moments, rate progress from 1 to 3, and save directly to VikasSetu's records.
+          {t("prog.page_subtitle", "Capture learning moments, rate progress from 1 to 3, and save directly to VikasSetu's records.")}
         </p>
       </header>
 
@@ -913,7 +915,7 @@ function ProgressPage() {
                     />
                     <div className="flex-1 min-w-0">
                       <span className="font-semibold text-[16px] text-[#26332D] block truncate">
-                        {d.name}
+                        {getDomainTitle(d.id, lang)}
                       </span>
                       <div className="flex items-center gap-2 text-[13px] text-[#5F6B62]">
                         {selectedChild ? (
@@ -1129,7 +1131,7 @@ function ProgressPage() {
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-display text-2xl font-bold text-[#193F32]">
-              Saved Observations
+              {t("prog.saved_obs", "Saved Observations")}
             </h2>
             <p className="text-[14px] text-[#5F6B62] mt-0.5">
               Review, edit, or remove past classroom observations stored in VikasSetu.
@@ -1163,7 +1165,7 @@ function ProgressPage() {
               onChange={(e) => setFilterChild(e.target.value)}
               className="rounded-[10px] border border-[#E2D9C8] bg-[#FFFDF8] px-2.5 py-1 text-sm text-[#26332D] font-medium focus:outline-none focus:ring-2 focus:ring-[#193F32]"
             >
-              <option value="all">All Children</option>
+              <option value="all">{t("rec.all_children", "All Children")}</option>
               {childrenList.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -1181,10 +1183,10 @@ function ProgressPage() {
               onChange={(e) => setFilterDomain(e.target.value)}
               className="rounded-[10px] border border-[#E2D9C8] bg-[#FFFDF8] px-2.5 py-1 text-sm text-[#26332D] font-medium focus:outline-none focus:ring-2 focus:ring-[#193F32]"
             >
-              <option value="all">All Learning Areas</option>
+              <option value="all">{t("common.all", "All")}</option>
               {DOMAINS.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.name}
+                  {getDomainTitle(d.id, lang)}
                 </option>
               ))}
             </select>
@@ -1351,7 +1353,7 @@ function ProgressPage() {
               >
                 {DOMAINS.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.name}
+                    {getDomainTitle(d.id, lang)}
                   </option>
                 ))}
               </select>

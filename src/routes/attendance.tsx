@@ -4,6 +4,8 @@ import { Check, X, Calendar } from "lucide-react";
 import { ChildAvatar } from "@/components/ChildAvatar";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/api";
+import { PageLoader } from "@/components/PageLoader";
+import { useI18n } from "@/lib/i18n";
 import type { Child } from "@/lib/data";
 
 export const Route = createFileRoute("/attendance")({
@@ -29,6 +31,7 @@ const getFormatDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 export function Attendance() {
+  const { t } = useI18n();
   const [childrenList, setChildrenList] = useState<Child[]>([]);
   const [attendanceMap, setAttendanceMap] = useState<Record<string, Record<string, boolean>>>({});
   const [loading, setLoading] = useState(true);
@@ -113,6 +116,10 @@ export function Attendance() {
   const absentToday = childrenList.filter((c) => attendanceMap[c.id]?.[todayKey] === false).length;
   const pct = childrenList.length ? Math.round((presentToday / childrenList.length) * 100) : 0;
 
+  if (loading && childrenList.length === 0) {
+    return <PageLoader fullScreen={false} message="Loading attendance register…" />;
+  }
+
   const formattedDate = today.toLocaleDateString("en-US", {
     weekday: "long",
     day: "numeric",
@@ -134,14 +141,14 @@ export function Attendance() {
       {/* 1. Header (Solid forest green title, muted date line underneath, calm top spacing) */}
       <header className="space-y-1.5 pt-2 sm:pt-3">
         <h1 className="font-display text-[28px] sm:text-[32px] font-bold tracking-tight text-[#193F32] leading-tight">
-          Attendance
+          {t("att.title", "Attendance")}
         </h1>
         <p className="text-[14px] text-[#5F6B62] font-semibold flex items-center gap-1.5">
           <Calendar aria-hidden="true" className="h-4 w-4 text-[#5F6B62]" />
           <span>{formattedDate}</span>
         </p>
         <p className="text-[14px] text-[#5F6B62] leading-relaxed max-w-[65ch]">
-          Tap Present or Absent for each child to record today's roll.
+          {t("att.subtitle", "Tap Present or Absent for each child to record today's roll.")}
         </p>
       </header>
 
@@ -155,7 +162,7 @@ export function Attendance() {
               <span className="text-xl sm:text-2xl font-bold text-[#2F7D4F] leading-none">
                 {presentToday}
               </span>
-              <span className="text-sm font-semibold text-[#5F6B62] ml-1.5">Present</span>
+              <span className="text-sm font-semibold text-[#5F6B62] ml-1.5">{t("att.present", "Present")}</span>
             </div>
           </div>
 
@@ -166,7 +173,7 @@ export function Attendance() {
               <span className="text-xl sm:text-2xl font-bold text-[#26332D] leading-none">
                 {absentToday}
               </span>
-              <span className="text-sm font-semibold text-[#5F6B62] ml-1.5">Absent</span>
+              <span className="text-sm font-semibold text-[#5F6B62] ml-1.5">{t("att.absent", "Absent")}</span>
             </div>
           </div>
         </div>
@@ -193,11 +200,11 @@ export function Attendance() {
         <span className="text-[12px] font-bold text-[#26332D]">Month history:</span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-4 w-2 rounded-[2px] bg-[#2F7D4F]" aria-hidden="true" />
-          <span>Present</span>
+          <span>{t("att.present", "Present")}</span>
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-4 w-2 rounded-[2px] bg-[#C94A3F]" aria-hidden="true" />
-          <span>Absent</span>
+          <span>{t("att.absent", "Absent")}</span>
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-4 w-2 rounded-[2px] bg-[#E2D9C8]" aria-hidden="true" />
@@ -323,7 +330,7 @@ export function Attendance() {
                       )}
                     >
                       {todayStatus === true && <Check aria-hidden="true" size={15} strokeWidth={2.5} className="text-white" />}
-                      <span>Present</span>
+                      <span>{t("att.present", "Present")}</span>
                     </button>
 
                     {/* Absent Option */}
@@ -339,7 +346,7 @@ export function Attendance() {
                       )}
                     >
                       {todayStatus === false && <X aria-hidden="true" size={15} strokeWidth={2.5} className="text-white" />}
-                      <span>Absent</span>
+                      <span>{t("att.absent", "Absent")}</span>
                     </button>
                   </div>
                 </div>

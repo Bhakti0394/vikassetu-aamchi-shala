@@ -4,6 +4,7 @@ import { Clock, Signal, ArrowRight } from "lucide-react";
 import { ACTIVITIES, DOMAINS, domainOf, type DomainId, type Activity } from "@/lib/data";
 import { AreaIcon, ActivityIcon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
+import { useI18n, getDomainTitle, translateActivityName } from "@/lib/i18n";
 
 export const Route = createFileRoute("/activities/")({
   head: () => ({
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/activities/")({
 });
 
 function Activities() {
+  const { t, lang } = useI18n();
   const [filter, setFilter] = useState<DomainId | "all">("all");
 
   const list = useMemo(() => {
@@ -43,13 +45,13 @@ function Activities() {
       {/* 1. Page Header (Solid forest-green, no gradient, calm typography) */}
       <header className="space-y-1.5 pt-1">
         <p className="text-[12px] font-bold uppercase tracking-wider text-[#193F32]">
-          Activity library
+          {t("act.library", "Activity library")}
         </p>
         <h1 className="font-display text-[28px] sm:text-[32px] font-bold tracking-tight text-[#193F32] leading-tight">
-          Activities
+          {t("act.title", "Activities")}
         </h1>
         <p className="text-[14px] text-[#5F6B62] leading-relaxed max-w-[65ch]">
-          Short, low-cost activities you can do with everyday classroom materials.
+          {t("act.subtitle", "Short, low-cost activities you can do with everyday classroom materials.")}
         </p>
       </header>
 
@@ -77,7 +79,7 @@ function Activities() {
             strokeWidth={1.75}
             className={filter === "all" ? "text-[#193F32]" : "text-[#5F6B62]"}
           />
-          <span>All</span>
+          <span>{t("common.all", "All")}</span>
           <span
             className={cn(
               "rounded-full px-1.5 py-0.5 text-[11px] font-semibold leading-none",
@@ -113,7 +115,7 @@ function Activities() {
                 strokeWidth={1.75}
                 className={isSelected ? "text-[#193F32]" : "text-[#5F6B62]"}
               />
-              <span>{d.short}</span>
+              <span>{getDomainTitle(d.id, lang)}</span>
               <span
                 className={cn(
                   "rounded-full px-1.5 py-0.5 text-[11px] font-semibold leading-none",
@@ -165,6 +167,7 @@ function ActivityCard({
   activity: Activity;
   isAltTint?: boolean;
 }) {
+  const { t, lang } = useI18n();
   const d = domainOf(a.domain);
 
   return (
@@ -183,27 +186,27 @@ function ActivityCard({
             tileClassName="h-11 w-11 rounded-[12px]"
           />
           <span className="text-[12px] font-semibold text-[#5F6B62] truncate">
-            {d?.name ?? a.domain}
+            {a.domain ? getDomainTitle(a.domain, lang) : d?.name}
           </span>
         </div>
 
         {/* b. Activity Title: 17-18px semibold, strongest text */}
         <h2 className="text-[17px] sm:text-[18px] font-semibold text-[#26332D] leading-snug line-clamp-2">
-          {a.name}
+          {translateActivityName(a.name, lang)}
         </h2>
 
         {/* c. Meta Row: Clock + min, Signal + difficulty (single dot separator) */}
         <div className="flex items-center gap-2 text-[13px] text-[#5F6B62]">
           <span className="inline-flex items-center gap-1.5">
             <Clock aria-hidden="true" size={15} strokeWidth={1.75} className="text-[#5F6B62]" />
-            <span>{a.minutes} min</span>
+            <span>{a.minutes} {t("rec.mins", "mins")}</span>
           </span>
           <span aria-hidden="true" className="text-[#E2D9C8]">
             ·
           </span>
           <span className="inline-flex items-center gap-1.5">
             <Signal aria-hidden="true" size={15} strokeWidth={1.75} className="text-[#5F6B62]" />
-            <span>{a.difficulty}</span>
+            <span>{t(`rec.${a.difficulty}`, a.difficulty)}</span>
           </span>
         </div>
 

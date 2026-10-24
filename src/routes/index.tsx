@@ -25,6 +25,8 @@ import {
   SunDoodle,
 } from "@/components/illustrations";
 import "@/styles/landing.css";
+import { useI18n } from "@/lib/i18n";
+import { LanguageSelector } from "@/components/LanguageSelector";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -150,6 +152,7 @@ const gallery = [
 
 function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { t } = useI18n();
   const closeMenu = () => setMenuOpen(false);
 
   return (
@@ -159,8 +162,8 @@ function LandingPage() {
           <Link to="/" className="brand" onClick={closeMenu} aria-label="VikasSetu – Aamchi Shala home">
             <span className="brand-mark"><LeafMark /></span>
             <span className="brand-copy">
-              <strong>VikasSetu</strong>
-              <span>Aamchi Shala</span>
+              <strong>{t("brand.title", "VikasSetu")}</strong>
+              <span>{t("brand.subtitle", "Aamchi Shala")}</span>
             </span>
           </Link>
           <button
@@ -174,13 +177,14 @@ function LandingPage() {
             {menuOpen ? <X size={22} strokeWidth={1.8} /> : <Menu size={22} strokeWidth={1.8} />}
           </button>
           <nav id="primary-navigation" className={`primary-nav ${menuOpen ? "is-open" : ""}`} aria-label="Primary navigation">
-            <a href="#moments" onClick={closeMenu}>Why VikasSetu</a>
-            <a href="#domains" onClick={closeMenu}>Learning paths</a>
-            <a href="#activities" onClick={closeMenu}>Activities</a>
-            <a href="#how-it-works" onClick={closeMenu}>How it works</a>
-            <Link to="/dashboard" className="nav-login" onClick={closeMenu}>Teacher Portal</Link>
+            <a href="#moments" onClick={closeMenu}>{t("nav.why_vikassetu", "Why VikasSetu")}</a>
+            <a href="#domains" onClick={closeMenu}>{t("nav.learning_paths", "Learning paths")}</a>
+            <a href="#activities" onClick={closeMenu}>{t("nav.activities", "Activities")}</a>
+            <a href="#how-it-works" onClick={closeMenu}>{t("nav.how_it_works", "How it works")}</a>
+            <Link to="/dashboard" className="nav-login" onClick={closeMenu}>{t("nav.teacher_portal", "Teacher Portal")}</Link>
+            <LanguageSelector variant="header" />
             <Link to="/dashboard" className="button button-small button-outline-forest" onClick={closeMenu}>
-              Enter App <ArrowRight size={15} />
+              {t("nav.enter_app", "Enter App")} <ArrowRight size={15} />
             </Link>
           </nav>
         </div>
@@ -190,16 +194,16 @@ function LandingPage() {
         <section className="hero-section" aria-labelledby="hero-title">
           <div className="site-container hero-grid">
             <div className="hero-copy rise-in">
-              <p className="eyebrow"><span className="eyebrow-dot" /> An observation-led companion for early learning</p>
-              <h1 id="hero-title">Small steps<br className="hero-br" />build <em>big dreams.</em></h1>
-              <p className="hero-lede">Every child learns differently. Give every learner the attention, activities, and encouragement they need to grow.</p>
+              <p className="eyebrow"><span className="eyebrow-dot" /> {t("landing.hero_kicker", "An observation-led companion for early learning")}</p>
+              <h1 id="hero-title">{t("landing.hero_h1_line1", "Small steps")}<br className="hero-br" />{t("landing.hero_h1_line2", "build big dreams.")}</h1>
+              <p className="hero-lede">{t("landing.hero_p", "Every child learns differently. Give every learner the attention, activities, and encouragement they need to grow.")}</p>
               <div className="hero-actions">
                 <Link to="/dashboard" className="button button-primary">
-                  Launch VikasSetu <ArrowRight size={17} />
+                  {t("landing.launch_btn", "Launch VikasSetu")} <ArrowRight size={17} />
                 </Link>
-                <a className="button button-quiet" href="#activities">Explore activities <ChevronRight size={17} /></a>
+                <a className="button button-quiet" href="#activities">{t("landing.explore_btn", "Explore activities")} <ChevronRight size={17} /></a>
               </div>
-              <div className="trust-note"><span className="trust-check"><Check size={13} /></span> Made for preschool and Anganwadi teachers.</div>
+              <div className="trust-note"><span className="trust-check"><Check size={13} /></span> {t("landing.trust_note", "Made for preschool and Anganwadi teachers.")}</div>
             </div>
             <div className="hero-art rise-in" aria-label="A teacher speaking to a classroom of attentive young children">
               <div className="hero-art-frame">
@@ -379,8 +383,8 @@ function LandingPage() {
               <div className="brand brand-footer">
                 <span className="brand-mark"><LeafMark /></span>
                 <span className="brand-copy">
-                  <strong>VikasSetu</strong>
-                  <span>Aamchi Shala</span>
+                  <strong>{t("brand.title", "VikasSetu")}</strong>
+                  <span>{t("brand.subtitle", "Aamchi Shala")}</span>
                 </span>
               </div>
               <p className="footer-copy">

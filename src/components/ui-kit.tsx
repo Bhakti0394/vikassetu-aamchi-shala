@@ -11,6 +11,7 @@ import {
   type Tone,
 } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { useI18n, getDomainTitle } from "@/lib/i18n";
 import { AlertCircle, CheckCircle2, CloudOff, RefreshCw } from "lucide-react";
 
 export function PageHeader({
@@ -61,20 +62,28 @@ export function LevelDots({ score, tone = "primary" }: { score: Score; tone?: To
 }
 
 export function ScoreBadge({ score }: { score: Score }) {
+  const { t } = useI18n();
   const cls =
     score === 1
       ? "bg-coral-soft text-coral"
       : score === 2
         ? "bg-sun-soft text-foreground"
         : "bg-primary-soft text-primary";
+  const label =
+    score === 1
+      ? t("score.needs_support", SCORE_LABEL[1])
+      : score === 2
+        ? t("score.developing", SCORE_LABEL[2])
+        : t("score.good", SCORE_LABEL[3]);
   return (
     <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-bold", cls)}>
-      {score}/3 · {SCORE_LABEL[score]}
+      {score}/3 · {label}
     </span>
   );
 }
 
 export function DomainChip({ id }: { id: DomainId }) {
+  const { lang } = useI18n();
   const d = domainOf(id);
   if (!d) return null;
   return (
@@ -84,12 +93,13 @@ export function DomainChip({ id }: { id: DomainId }) {
         toneBg[d.tone],
       )}
     >
-      {d.emoji} {d.name}
+      {d.emoji} {getDomainTitle(id, lang)}
     </span>
   );
 }
 
 export function DomainBars({ child }: { child: Child }) {
+  const { lang } = useI18n();
   return (
     <div className="space-y-4 stagger">
       {DOMAINS.map((d) => (
@@ -104,7 +114,7 @@ export function DomainBars({ child }: { child: Child }) {
           </div>
           <div className="flex-1">
             <div className="mb-1.5 flex items-center justify-between gap-2">
-              <span className="font-bold">{d.name}</span>
+              <span className="font-bold">{getDomainTitle(d.id, lang)}</span>
               <ScoreBadge score={child.scores[d.id]} />
             </div>
             <div className="h-2.5 overflow-hidden rounded-full bg-muted">
@@ -126,12 +136,14 @@ export function DomainBars({ child }: { child: Child }) {
 export function StartButton({
   activityId,
   childId,
-  label = "Start Activity",
+  label,
 }: {
   activityId: string;
   childId?: string;
   label?: string;
 }) {
+  const { t } = useI18n();
+  const displayLabel = label ?? t("rec.start", "Start");
   return (
     <Link
       to="/activities/$id"
@@ -139,7 +151,7 @@ export function StartButton({
       search={childId ? { child: childId } : {}}
       className="btn btn-primary"
     >
-      ▶ {label}
+      ▶ {displayLabel}
     </Link>
   );
 }
@@ -170,6 +182,7 @@ export function SyncStatusBadge({
   storageWarning,
   className,
 }: SyncStatusBadgeProps) {
+  const { t } = useI18n();
   const totalUnsynced = pendingCount + failedCount;
 
   return (
@@ -190,14 +203,14 @@ export function SyncStatusBadge({
           <span className="inline-flex items-center gap-1.5 rounded-full bg-coral-soft text-coral px-2.5 py-1 font-bold border border-coral/30">
             <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span>
-              {failedCount} failed to sync{pendingCount > 0 ? ` (${pendingCount} queued)` : ""}
+              {failedCount} {t("profile.sync_failed", "Sync failed")}{pendingCount > 0 ? ` (${pendingCount} queued)` : ""}
             </span>
           </span>
         ) : pendingCount > 0 ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-sun-soft text-foreground px-2.5 py-1 font-bold border border-sun/50">
             <RefreshCw className="h-3.5 w-3.5 shrink-0 text-sun-foreground" aria-hidden="true" />
             <span>
-              {pendingCount} offline trial{pendingCount === 1 ? "" : "s"} waiting
+              {pendingCount} {t("profile.saved_offline", "Saved offline")}
             </span>
           </span>
         ) : (
