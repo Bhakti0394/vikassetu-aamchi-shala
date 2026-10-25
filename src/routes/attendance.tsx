@@ -1,11 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { Check, X, Calendar } from "lucide-react";
+import { Check, X, Calendar, FileDown, Loader2 } from "lucide-react";
 import { ChildAvatar } from "@/components/ChildAvatar";
 import { cn } from "@/lib/utils";
-import { apiRequest } from "@/lib/api";
-import { PageLoader } from "@/components/PageLoader";
-import { useI18n } from "@/lib/i18n";
+import { apiRequest, downloadAttendancePdf } from "@/lib/api";
 import type { Child } from "@/lib/data";
 
 export const Route = createFileRoute("/attendance")({
@@ -31,20 +29,33 @@ const getFormatDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 export function Attendance() {
-  const { t } = useI18n();
   const [childrenList, setChildrenList] = useState<Child[]>([]);
   const [attendanceMap, setAttendanceMap] = useState<Record<string, Record<string, boolean>>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const today = new Date();
-  const todayKey = getFormatDate(today);
+  // "Today" is always the Asia/Kolkata date so it matches the backend dashboard and the PDF report.
+  const todayKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(today);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
-  // Days of the current month up to today (excluding Sundays)
-  const days = Array.from(
-    { length: today.getDate() },
-    (_, i) => new Date(today.getFullYear(), today.getMonth(), i + 1),
-  ).filter((d) => d.getDay() !== 0);
+// Days of the current month up to today. Sundays are skipped unless at least half of the class
+// was marked that day (a genuine working Sunday), so one stray mark can't change everyone's %.
+const marksPerDate: Record<string, number> = {};
+Object.values(attendanceMap).forEach((m) =>
+  Object.keys(m).forEach((k) => {
+    marksPerDate[k] = (marksPerDate[k] || 0) + 1;
+  }),
+);
+const isWorkingSunday = (key: string) => {
+  const n = marksPerDate[key] || 0;
+  return n > 0 && n * 2 >= childrenList.length;
+};
+const days = Array.from(
+  { length: today.getDate() },
+  (_, i) => new Date(today.getFullYear(), today.getMonth(), i + 1),
+).filter((d) => d.getDay() !== 0 || isWorkingSunday(getFormatDate(d)));
 
   useEffect(() => {
     let active = true;
@@ -103,22 +114,38 @@ export function Attendance() {
     }
   };
 
-  const calculateMonthlyPct = (childId: string) => {
-    const childAtt = attendanceMap[childId] || {};
-    const totalRecorded = Object.keys(childAtt).length;
-    if (totalRecorded === 0) return 0;
-    const presentCount = Object.values(childAtt).filter(Boolean).length;
-    return Math.round((presentCount / totalRecorded) * 100);
+  const handleDownloadPdf = async () => {
+    setPdfLoading(true);
+    setPdfError(null);
+    try {
+      // Always generated fresh on the server from the latest saved attendance.
+      await downloadAttendancePdf(todayKey);
+    } catch (err) {
+      setPdfError(err instanceof Error ? err.message : "Could not generate the PDF.");
+    } finally {
+      setPdfLoading(false);
+    }
   };
+
+  // Real monthly attendance: days present / school days so far this month (Mon–Sat, up to today).
+  // A day with no record counts as NOT attended, so a child with 2 present days out of 21
+  // school days shows ~10%, not 100%.
+  const schoolDayKeys = days.map(getFormatDate);
+  const monthlyStats = (childId: string) => {
+    const childAtt = attendanceMap[childId] || {};
+    const total = schoolDayKeys.length;
+    const present = schoolDayKeys.filter((k) => childAtt[k] === true).length;
+    return { present, total, pct: total ? Math.round((present / total) * 100) : 0 };
+  };
+  const calculateMonthlyPct = (childId: string) => monthlyStats(childId).pct;
 
   // Calculate today's stats based on marked records
   const presentToday = childrenList.filter((c) => attendanceMap[c.id]?.[todayKey] === true).length;
   const absentToday = childrenList.filter((c) => attendanceMap[c.id]?.[todayKey] === false).length;
   const pct = childrenList.length ? Math.round((presentToday / childrenList.length) * 100) : 0;
 
-  if (loading && childrenList.length === 0) {
-    return <PageLoader fullScreen={false} message="Loading attendance register…" />;
-  }
+  const allMarked =
+    childrenList.length > 0 && presentToday + absentToday === childrenList.length;
 
   const formattedDate = today.toLocaleDateString("en-US", {
     weekday: "long",
@@ -141,14 +168,14 @@ export function Attendance() {
       {/* 1. Header (Solid forest green title, muted date line underneath, calm top spacing) */}
       <header className="space-y-1.5 pt-2 sm:pt-3">
         <h1 className="font-display text-[28px] sm:text-[32px] font-bold tracking-tight text-[#193F32] leading-tight">
-          {t("att.title", "Attendance")}
+          Attendance
         </h1>
         <p className="text-[14px] text-[#5F6B62] font-semibold flex items-center gap-1.5">
           <Calendar aria-hidden="true" className="h-4 w-4 text-[#5F6B62]" />
           <span>{formattedDate}</span>
         </p>
         <p className="text-[14px] text-[#5F6B62] leading-relaxed max-w-[65ch]">
-          {t("att.subtitle", "Tap Present or Absent for each child to record today's roll.")}
+          Tap Present or Absent for each child to record today's roll.
         </p>
       </header>
 
@@ -162,7 +189,7 @@ export function Attendance() {
               <span className="text-xl sm:text-2xl font-bold text-[#2F7D4F] leading-none">
                 {presentToday}
               </span>
-              <span className="text-sm font-semibold text-[#5F6B62] ml-1.5">{t("att.present", "Present")}</span>
+              <span className="text-sm font-semibold text-[#5F6B62] ml-1.5">Present</span>
             </div>
           </div>
 
@@ -173,7 +200,7 @@ export function Attendance() {
               <span className="text-xl sm:text-2xl font-bold text-[#26332D] leading-none">
                 {absentToday}
               </span>
-              <span className="text-sm font-semibold text-[#5F6B62] ml-1.5">{t("att.absent", "Absent")}</span>
+              <span className="text-sm font-semibold text-[#5F6B62] ml-1.5">Absent</span>
             </div>
           </div>
         </div>
@@ -195,16 +222,49 @@ export function Attendance() {
         </div>
       </div>
 
+      {/* PDF report: generated automatically from the latest data on every click */}
+      <div className="flex flex-col gap-2">
+        {allMarked && (
+          <div
+            role="status"
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-[12px] border border-[#2F7D4F]/40 bg-[#EAF4EC] px-4 py-3 text-sm font-semibold text-[#193F32]"
+          >
+            <span>Everyone is marked for today. Your attendance report is ready.</span>
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={loading || pdfLoading || childrenList.length === 0}
+            data-testid="download-attendance-pdf"
+            className="inline-flex items-center justify-center gap-2 min-h-[42px] rounded-[10px] bg-[#193F32] px-4 py-2 text-sm font-bold text-[#FAF7EF] transition-colors hover:bg-[#2F7D4F] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#193F32]"
+          >
+            {pdfLoading ? (
+              <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileDown aria-hidden="true" className="h-4 w-4" />
+            )}
+            <span>{pdfLoading ? "Preparing PDF…" : "Download today's attendance (PDF)"}</span>
+          </button>
+          {pdfError && (
+            <p role="alert" className="text-sm font-semibold text-[#B23A30]">
+              {pdfError}
+            </p>
+          )}
+        </div>
+      </div>
+
       {/* 4. Legend (Single quiet legend strip under the summary) */}
       <div className="flex flex-wrap items-center gap-5 text-xs font-semibold text-[#5F6B62] px-1">
         <span className="text-[12px] font-bold text-[#26332D]">Month history:</span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-4 w-2 rounded-[2px] bg-[#2F7D4F]" aria-hidden="true" />
-          <span>{t("att.present", "Present")}</span>
+          <span>Present</span>
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-4 w-2 rounded-[2px] bg-[#C94A3F]" aria-hidden="true" />
-          <span>{t("att.absent", "Absent")}</span>
+          <span>Absent</span>
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-4 w-2 rounded-[2px] bg-[#E2D9C8]" aria-hidden="true" />
@@ -248,7 +308,8 @@ export function Attendance() {
           <div className="divide-y divide-[#E2D9C8] border-t border-[#E2D9C8]">
             {childrenList.map((c) => {
               const todayStatus = attendanceMap[c.id]?.[todayKey];
-              const monthlyPct = calculateMonthlyPct(c.id);
+              const stats = monthlyStats(c.id);
+              const monthlyPct = stats.pct;
               const isBelow75 = monthlyPct < 75;
 
               return (
@@ -273,6 +334,9 @@ export function Attendance() {
                           />
                         )}
                         <span>{monthlyPct}% this month</span>
+                        <span className="text-[12px] text-[#8A8F88]">
+                          ({stats.present}/{stats.total} days)
+                        </span>
                       </p>
                     </div>
                   </div>
@@ -330,7 +394,7 @@ export function Attendance() {
                       )}
                     >
                       {todayStatus === true && <Check aria-hidden="true" size={15} strokeWidth={2.5} className="text-white" />}
-                      <span>{t("att.present", "Present")}</span>
+                      <span>Present</span>
                     </button>
 
                     {/* Absent Option */}
@@ -346,7 +410,7 @@ export function Attendance() {
                       )}
                     >
                       {todayStatus === false && <X aria-hidden="true" size={15} strokeWidth={2.5} className="text-white" />}
-                      <span>{t("att.absent", "Absent")}</span>
+                      <span>Absent</span>
                     </button>
                   </div>
                 </div>
